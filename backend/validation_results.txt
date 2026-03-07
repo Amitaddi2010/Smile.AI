@@ -1,0 +1,10 @@
+--- High Risk From DB Profile ---
+Risk Score: 91.0
+Risk Level: high
+Depression Prob: 0.9105
+
+--- Low Risk From DB Profile ---
+Risk Score: 23.3
+Risk Level: low
+Depression Prob: 0.2327
+

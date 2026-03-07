@@ -1,0 +1,18 @@
+{
+  "model_name": "Text Classifier v3",
+  "test_accuracy": 0.9596233414181766,
+  "test_f1": 0.9596777086791016,
+  "classes": [
+    "anxiety",
+    "bipolar",
+    "depression",
+    "normal",
+    "personality_disorder",
+    "stress",
+    "suicidal"
+  ],
+  "n_features": 30000,
+  "n_train": 126156,
+  "n_test": 14018,
+  "training_time_sec": 512.8
+}

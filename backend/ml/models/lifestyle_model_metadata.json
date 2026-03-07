@@ -1,0 +1,29 @@
+{
+  "model_name": "Lifestyle Risk v3",
+  "test_accuracy": 1.0,
+  "test_f1": 1.0,
+  "test_auc": 1.0,
+  "feature_columns": [
+    "Age",
+    "Gender",
+    "User_Archetype",
+    "Primary_Platform",
+    "Daily_Screen_Time_Hours",
+    "Dominant_Content_Type",
+    "Activity_Type",
+    "Late_Night_Usage",
+    "Social_Comparison_Trigger",
+    "Sleep_Duration_Hours",
+    "GAD_7_Score",
+    "GAD_7_Severity",
+    "PHQ_9_Score",
+    "screen_risk",
+    "sleep_deficit",
+    "digital_stress",
+    "phq_gad_compound",
+    "screen_x_latenight"
+  ],
+  "n_train": 6800,
+  "n_test": 1200,
+  "training_time_sec": 9.3
+}
