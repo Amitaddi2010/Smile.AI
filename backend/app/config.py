@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
     # CORS
-    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,*").split(",")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,*")
     
     # ML Model paths
     MODEL_PATH: str = os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
