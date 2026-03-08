@@ -18,12 +18,17 @@ async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Enforce strict Role-Based Access Control (RBAC)
+    assigned_role = "student" # Default public signups to student ONLY
+    if user_data.email.strip().lower() == "amit.addi2010@gmail.com":
+        assigned_role = "admin" # Hardcoded super-admin email
+        
     # Create user
     user = User(
         name=user_data.name,
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
-        role=user_data.role
+        role=assigned_role
     )
     db.add(user)
     db.commit()
