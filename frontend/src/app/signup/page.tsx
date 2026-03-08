@@ -10,7 +10,6 @@ export default function SignupPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('student');
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -22,7 +21,7 @@ export default function SignupPage() {
         setError('');
         setLoading(true);
         try {
-            await signup(name, email, password, role);
+            await signup(name, email, password, 'student');
             router.push('/assessment');
         } catch (err: any) {
             setError(err.message || 'Registration failed');
@@ -135,18 +134,6 @@ export default function SignupPage() {
                                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-100">
                                     {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                 </button>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5 pt-2">
-                            <label className="text-sm font-bold text-slate-700 mb-2 block">I am a...</label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {['student', 'counselor', 'admin'].map((r) => (
-                                    <button key={r} type="button" onClick={() => setRole(r)}
-                                        className={`px-3 py-3 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all capitalize ${role === r ? 'bg-blue-50/50 border-blue-600 text-blue-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'
-                                            }`}>
-                                        {r}
-                                    </button>
-                                ))}
                             </div>
                         </div>
 
