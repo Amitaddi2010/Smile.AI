@@ -105,6 +105,17 @@ export const dashboardAPI = {
       token,
     }),
 
+  getCounselors: (token: string) =>
+    apiFetch<any[]>('/dashboard/admin/counselors', { token }),
+
+  assignCounselor: (userId: number, counselorId: number | null, token: string) =>
+    apiFetch<any>(`/dashboard/admin/users/${userId}/counselor`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ counselor_id: counselorId }),
+      token,
+    }),
+
   getMyWellness: (token: string) =>
     apiFetch<any>('/dashboard/my-wellness', { token }),
 };

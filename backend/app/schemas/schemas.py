@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     role: str
+    counselor_id: Optional[int] = None
     created_at: datetime
     is_active: bool = True
 
@@ -33,6 +34,10 @@ class UserResponse(BaseModel):
 
 class UserRoleUpdate(BaseModel):
     role: str = Field(..., description="Role must be single string: student, counselor, or admin")
+
+
+class UserCounselorUpdate(BaseModel):
+    counselor_id: Optional[int] = Field(None, description="The ID of the counselor to assign to the student. Null removes assignment.")
 
 
 class UserProfileUpdate(BaseModel):

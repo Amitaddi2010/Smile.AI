@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..database import get_db
 from ..models.user import User, Assessment, JournalEntry
-from ..schemas.schemas import StudentSummary, DashboardStats, AssessmentResponse, JournalEntryResponse, UserRoleUpdate
+from ..schemas.schemas import StudentSummary, DashboardStats, AssessmentResponse, JournalEntryResponse, UserRoleUpdate, UserCounselorUpdate
 from ..services.auth_service import get_current_user, require_role
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -57,7 +57,13 @@ async def get_students_list(
     user: User = Depends(require_role("counselor", "admin"))
 ):
     """Get list of students with their risk levels (counselor/admin)."""
-    students = db.query(User).filter(User.role == "student").all()
+    query = db.query(User).filter(User.role == "student")
+    
+    # If requester is a counselor, only show explicitly assigned students
+    if user.role == "counselor":
+        query = query.filter(User.counselor_id == user.id)
+        
+    students = query.all()
     
     result = []
     for student in students:
@@ -183,6 +189,45 @@ async def update_user_role(
     target_user.role = role_data.role
     db.commit()
     return {"message": f"Successfully updated user {target_user.email} to {role_data.role}"}
+
+
+@router.get("/admin/counselors")
+async def get_all_counselors(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin"))
+):
+    """Get all users with the counselor role for assignment dropdowns."""
+    counselors = db.query(User).filter(User.role == "counselor", User.is_active == True).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "email": c.email
+        }
+        for c in counselors
+    ]
+
+
+@router.put("/admin/users/{user_id}/counselor")
+async def assign_counselor(
+    user_id: int,
+    assignment_data: UserCounselorUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin"))
+):
+    """Assign a student to a specific counselor."""
+    student = db.query(User).filter(User.id == user_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found or user is not a student")
+        
+    if assignment_data.counselor_id is not None:
+        counselor = db.query(User).filter(User.id == assignment_data.counselor_id, User.role == "counselor").first()
+        if not counselor:
+            raise HTTPException(status_code=400, detail="Target counselor not found or is not a valid counselor")
+            
+    student.counselor_id = assignment_data.counselor_id
+    db.commit()
+    return {"message": f"Successfully assigned counselor to student"}
 
 
 @router.get("/student/{student_id}")
