@@ -1,11 +1,37 @@
 'use client';
 import { useAuth } from '@/lib/auth-context';
-import { useEffect, useState } from 'react';
-import { Activity, Users, AlertTriangle, TrendingUp, BarChart3, Clock, Brain, Sparkles, ShieldCheck, RefreshCcw, ArrowRight } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Activity, Users, AlertTriangle, TrendingUp, BarChart3, Clock, Brain, Sparkles, ShieldCheck, RefreshCcw, ArrowRight, Bot } from 'lucide-react';
 import { dashboardAPI, predictAPI, aiAPI } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { motion, useInView } from 'framer-motion';
 
 const RISK_COLORS = { low: '#22c55e', moderate: '#f59e0b', high: '#ef4444' };
+
+function getGreeting() {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+function useCountUp(end: number, duration = 1600) {
+    const [count, setCount] = useState(0);
+    const ref = useRef<HTMLDivElement>(null);
+    const isInView = useInView(ref, { once: true });
+    useEffect(() => {
+        if (!isInView || end === 0) return;
+        let start = 0;
+        const step = end / (duration / 16);
+        const timer = setInterval(() => {
+            start += step;
+            if (start >= end) { setCount(end); clearInterval(timer); }
+            else setCount(Math.floor(start));
+        }, 16);
+        return () => clearInterval(timer);
+    }, [end, duration, isInView]);
+    return { count, ref };
+}
 
 export default function DashboardPage() {
     const { user, token } = useAuth();
@@ -29,7 +55,6 @@ export default function DashboardPage() {
                 setHistory(historyData);
                 setWellness(wellnessData);
 
-                // Fetch AI Insights if not already loading
                 setLoadingInsights(true);
                 aiAPI.getInsights(token)
                     .then(res => setInsights(res.insights))
@@ -52,28 +77,38 @@ export default function DashboardPage() {
     const activeHistory = user?.role === 'student' ? history : (stats?.recent_assessments || []);
     const trendData = activeHistory.slice(0, 10).reverse().map((a: any, i: number) => ({ name: `#${i + 1}`, score: a.risk_score }));
 
+    if (!user) return null;
+
     return (
         <div className="space-y-8 relative z-10">
             <div className="pt-2">
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                    Welcome back, <span className="text-blue-600 drop-shadow-sm">{user?.name}</span>.
-                </h1>
-                <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium">Here&apos;s your mental wellness overview</p>
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight"
+                >
+                    {getGreeting()}, <span className="text-blue-600 drop-shadow-sm">{user?.name}</span>.
+                </motion.h1>
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-slate-600 mt-2 text-sm sm:text-base font-medium"
+                >Here&apos;s your mental wellness overview</motion.p>
             </div>
 
-            {/* Intelligence Command Center & Role Specific Dashboard Headers */}
-            {user?.role === 'student' ? (
+            {user.role === 'student' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Primary Stats Column */}
                     <div className="lg:col-span-5 flex flex-col gap-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <StatCard
                                 icon={Activity}
                                 label="Risk Score"
                                 value={riskScore.toString()}
-                                color={RISK_COLORS[riskLevel as keyof typeof RISK_COLORS] || '#64748b'}
-                                trend={riskLevel.toUpperCase()}
-                                trendColor={RISK_COLORS[riskLevel as keyof typeof RISK_COLORS] || '#64748b'}
+                                color={RISK_COLORS[riskLevel as keyof typeof RISK_COLORS] || '#475569'}
+                                trend={(riskLevel || 'NONE').toUpperCase()}
+                                trendColor={RISK_COLORS[riskLevel as keyof typeof RISK_COLORS] || '#475569'}
                             />
                             <StatCard
                                 icon={TrendingUp}
@@ -85,25 +120,25 @@ export default function DashboardPage() {
                             />
                         </div>
 
-
-
-                        <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-blue-900/10 group">
-                            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 blur-[50px] group-hover:bg-blue-500/20 transition-all duration-700" />
+                        <button onClick={() => window.location.href = '/talk'} className="w-full text-left bg-gradient-to-br from-indigo-600 to-blue-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-600/20 group hover:shadow-indigo-600/30 transition-all hover:-translate-y-1">
+                            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 blur-[50px] group-hover:bg-white/20 transition-all duration-700 group-hover:scale-150" />
                             <div className="relative z-10 flex items-center justify-between">
-                                <div className="space-y-2">
-                                    <h3 className="text-lg font-bold flex items-center gap-2">
-                                        <ShieldCheck size={20} className="text-blue-400" /> Secure Analysis
+                                <div className="space-y-3">
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
+                                        <Sparkles size={10} className="text-indigo-200" /> New Experience
+                                    </div>
+                                    <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+                                        Talk to SMILE <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                     </h3>
-                                    <p className="text-slate-400 text-xs font-medium leading-relaxed max-w-[200px]">Behavioral telemetry is end-to-end encrypted with LLaMA 3.1 intelligence.</p>
+                                    <p className="text-indigo-50/80 text-xs font-medium leading-relaxed max-w-[200px]">Skip the forms. Just chat naturally and let our AI handle the rest.</p>
                                 </div>
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-blue-400 border border-white/10">
-                                    <Activity size={20} className="animate-pulse" />
+                                <div className="w-14 h-14 rounded-[1.5rem] bg-white/10 flex items-center justify-center text-white border border-white/20 shadow-inner group-hover:scale-105 transition-transform">
+                                    <Bot size={24} className="text-indigo-100" />
                                 </div>
                             </div>
-                        </div>
+                        </button>
                     </div>
 
-                    {/* Analysis Diagnostic Hub */}
                     <div className="lg:col-span-7 h-full">
                         <div className="h-full bg-white/40 backdrop-blur-3xl rounded-[3rem] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)] relative overflow-hidden group flex flex-col justify-between">
                             <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-1000 rotate-12 group-hover:rotate-0">
@@ -120,7 +155,7 @@ export default function DashboardPage() {
                                             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Diagnostic Hub</h3>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Active Clinical Profile</p>
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Active Clinical Profile</p>
                                             </div>
                                         </div>
                                     </div>
@@ -141,7 +176,6 @@ export default function DashboardPage() {
                                                 const clean = insights.replace(/\*/g, '').trim();
                                                 const redMatch = clean.match(/RED FLAGS[:\s]*([\s\S]*?)(?=GREEN FLAGS|STRATEGIC|RECOMMENDATIONS|$)/i);
                                                 const greenMatch = clean.match(/GREEN FLAGS[:\s]*([\s\S]*?)(?=STRATEGIC|RED FLAGS|RECOMMENDATIONS|$)/i);
-
                                                 const redFlags = redMatch ? redMatch[1].trim().split('\n').filter(l => l.includes('-')) : [];
                                                 const greenFlags = greenMatch ? greenMatch[1].trim().split('\n').filter(l => l.includes('-')) : [];
 
@@ -154,9 +188,7 @@ export default function DashboardPage() {
                                                                 </div>
                                                                 <span className="text-blue-600 font-bold uppercase tracking-widest text-[10px]">System Note</span>
                                                             </div>
-                                                            <p className="text-slate-600 font-medium leading-relaxed">
-                                                                {clean.split('\n\n')[0]}
-                                                            </p>
+                                                            <p className="text-slate-600 font-medium leading-relaxed">{clean.split('\n\n')[0]}</p>
                                                         </div>
                                                     );
                                                 }
@@ -166,9 +198,7 @@ export default function DashboardPage() {
                                                         <p className="text-slate-600 font-medium leading-relaxed border-l-4 border-blue-500/20 pl-6 text-sm italic py-1">
                                                             {clean.split('\n\n')[0].replace(/ANALYSIS OVERVIEW[:\s]*/i, '')}
                                                         </p>
-
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            {/* Red Flags Card */}
                                                             <div className="p-6 rounded-[2rem] bg-gradient-to-br from-white to-red-50/30 border border-red-100/50 shadow-sm hover:shadow-md hover:border-red-200/50 transition-all duration-500">
                                                                 <div className="flex items-center gap-3 mb-5">
                                                                     <div className="w-8 h-8 rounded-xl bg-red-100/50 flex items-center justify-center text-red-500">
@@ -185,8 +215,6 @@ export default function DashboardPage() {
                                                                     ))}
                                                                 </ul>
                                                             </div>
-
-                                                            {/* Green Flags Card */}
                                                             <div className="p-6 rounded-[2rem] bg-gradient-to-br from-white to-emerald-50/30 border border-emerald-100/50 shadow-sm hover:shadow-md hover:border-emerald-200/50 transition-all duration-500">
                                                                 <div className="flex items-center gap-3 mb-5">
                                                                     <div className="w-8 h-8 rounded-xl bg-emerald-100/50 flex items-center justify-center text-emerald-500">
@@ -208,9 +236,9 @@ export default function DashboardPage() {
                                                 );
                                             })() : (
                                                 <div className="text-center py-12 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
-                                                    <Brain size={48} className="mx-auto text-slate-300 mb-3 opacity-50" />
-                                                    <p className="text-slate-400 font-bold text-sm">Waiting for Telemetry...</p>
-                                                    <p className="text-slate-300 text-[10px] uppercase font-bold tracking-widest mt-1">Complete assessment to bridge the gap</p>
+                                                    <Brain size={48} className="mx-auto text-slate-400 mb-3 opacity-60" />
+                                                    <p className="text-slate-600 font-bold text-sm">Waiting for Telemetry...</p>
+                                                    <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-1">Complete assessment to bridge the gap</p>
                                                 </div>
                                             )}
                                         </div>
@@ -220,17 +248,17 @@ export default function DashboardPage() {
 
                             <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
                                 <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-black text-slate-500 uppercase tracking-widest opacity-70">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-black text-slate-600 uppercase tracking-widest opacity-80">
                                         Privacy Protected
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <RefreshCcw size={14} className="text-blue-500 animate-spin-slow opacity-50" />
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest opacity-70">AI Auto-Sync</span>
+                                        <RefreshCcw size={14} className="text-blue-500 animate-spin-slow opacity-60" />
+                                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest opacity-80">AI Auto-Sync</span>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => window.location.href = '/ai-insights'}
-                                    className="group flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#1e40af] transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-95"
+                                    className="group flex items-center gap-3 px-8 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-95"
                                 >
                                     Intelligence Center <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                 </button>
@@ -247,10 +275,10 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <div className={`grid grid-cols-1 ${user?.role === 'student' ? '' : 'lg:grid-cols-2'} gap-6`}>
+            <div className={`grid grid-cols-1 ${user.role === 'student' ? '' : 'lg:grid-cols-2'} gap-6`}>
                 <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] p-7 sm:p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] border border-white/60">
                     <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <TrendingUp size={18} className="text-[#1e40af]" /> {user?.role === 'student' ? 'Risk Score Trend' : 'System Wide Trend'}
+                        <TrendingUp size={18} className="text-[#1e40af]" /> {user.role === 'student' ? 'Risk Score Trend' : 'System Wide Trend'}
                     </h3>
                     {trendData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={220}>
@@ -261,19 +289,30 @@ export default function DashboardPage() {
                                         <stop offset="95%" stopColor="#1e40af" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                                <YAxis stroke="#94a3b8" fontSize={12} domain={[0, 100]} />
-                                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
+                                <XAxis dataKey="name" stroke="#64748b" fontSize={11} fontWeight={600} />
+                                <YAxis stroke="#64748b" fontSize={11} fontWeight={600} domain={[0, 100]} />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: 'rgba(255, 255, 255, 0.9)',
+                                        backdropFilter: 'blur(10px)',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '16px',
+                                        padding: '12px',
+                                        color: '#0f172a',
+                                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                                    }}
+                                    itemStyle={{ fontWeight: 800, color: '#1e40af' }}
+                                />
                                 <Area type="monotone" dataKey="score" stroke="#1e40af" fill="url(#riskGrad)" strokeWidth={2} />
                             </AreaChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[220px] flex items-center justify-center text-[#94a3b8]">No assessments yet</div>
+                        <div className="h-[220px] flex items-center justify-center text-slate-400">No assessments yet</div>
                     )}
                 </div>
 
-                {(user?.role === 'admin' || user?.role === 'counselor') && (
+                {(user.role === 'admin' || user.role === 'counselor') && (
                     <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] p-7 sm:p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] border border-white/60">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <BarChart3 size={18} className="text-[#1e40af]" /> System Risk Distribution
@@ -300,16 +339,15 @@ export default function DashboardPage() {
                                 </div>
                             </>
                         ) : (
-                            <div className="h-[220px] flex items-center justify-center text-[#94a3b8]">No system data available</div>
+                            <div className="h-[220px] flex items-center justify-center text-slate-400">No system data available</div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Wellness Scores */}
             {wellness && wellness.lifestyle_score > 0 && (
                 <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] p-7 sm:p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] border border-white/60">
-                    <h3 className="text-base font-semibold text-[#0f172a] mb-6">Wellness Scores</h3>
+                    <h3 className="text-base font-semibold text-slate-900 mb-6">Wellness Scores</h3>
                     <div className="grid grid-cols-3 gap-6">
                         <ScoreCard label="Lifestyle" score={wellness.lifestyle_score} color="#1e40af" />
                         <ScoreCard label="Stress Mgmt" score={wellness.stress_score} color="#8b5cf6" />
@@ -318,21 +356,20 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Recent Assessments Log */}
             <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] p-7 sm:p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] border border-white/60">
                 <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                    <Clock size={18} className="text-[#94a3b8]" /> {user?.role === 'student' ? 'Recent Assessments' : 'Recent Platform Telemetry'}
+                    <Clock size={18} className="text-slate-500" /> {user.role === 'student' ? 'Recent Assessments' : 'Recent Platform Telemetry'}
                 </h3>
                 {activeHistory.length > 0 ? (
                     <div className="space-y-3">
                         {activeHistory.slice(0, 5).map((a: any) => (
                             <div key={a.id} className="flex items-center justify-between py-4 px-5 rounded-2xl bg-slate-50 hover:bg-white border text-sm border-transparent hover:border-slate-100 hover:shadow-sm transition-all group">
                                 <div>
-                                    <p className="text-slate-900 font-bold flex items-center gap-2">{user?.role === 'student' ? `Assessment #${a.id}` : `Global Assessment #${a.id}`}</p>
-                                    <p className="text-slate-500 text-xs font-medium mt-1">{new Date(a.created_at).toLocaleDateString()}</p>
+                                    <p className="text-slate-900 font-bold flex items-center gap-2">{user.role === 'student' ? `Assessment #${a.id}` : `Global Assessment #${a.id}`}</p>
+                                    <p className="text-slate-600 text-xs font-medium mt-1">{new Date(a.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <span className="text-sm font-semibold text-slate-500">Score: <span className="font-black text-slate-900">{a.risk_score}</span></span>
+                                    <span className="text-sm font-semibold text-slate-600">Score: <span className="font-black text-slate-900">{a.risk_score}</span></span>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${a.risk_level === 'low' ? 'bg-green-50 text-green-600' :
                                         a.risk_level === 'moderate' ? 'bg-yellow-50 text-yellow-600' :
                                             'bg-red-50 text-red-600'
@@ -342,9 +379,9 @@ export default function DashboardPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-8 text-[#94a3b8]">
+                    <div className="text-center py-8 text-slate-500">
                         <Activity size={40} className="mx-auto mb-2 opacity-30" />
-                        <p>{user?.role === 'student' ? 'No assessments yet. Take your first assessment to get started!' : 'No assessments tracked on the platform yet.'}</p>
+                        <p>{user.role === 'student' ? 'No assessments yet. Take your first assessment to get started!' : 'No assessments tracked on the platform yet.'}</p>
                     </div>
                 )}
             </div>
@@ -355,9 +392,7 @@ export default function DashboardPage() {
 function StatCard({ icon: Icon, label, value, color, trend, trendColor }: { icon: any; label: string; value: string; color: string; trend?: string, trendColor?: string }) {
     return (
         <div className="group relative overflow-hidden bg-white/60 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/60 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] transition-all duration-700 hover:-translate-y-2 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)]">
-            {/* Gloss Decoration */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent blur-3xl pointer-events-none" />
-
             <div className="flex items-start justify-between mb-10 relative z-10">
                 <div
                     className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 shadow-xl shadow-black/5"
@@ -371,22 +406,16 @@ function StatCard({ icon: Icon, label, value, color, trend, trendColor }: { icon
                     </div>
                 )}
             </div>
-
             <div className="relative z-10">
                 <div className="flex items-baseline gap-1 mb-2">
                     <p className="text-6xl font-black text-slate-900 tracking-tighter drop-shadow-sm">{value}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</p>
                     <div className="h-[2px] bg-slate-100 flex-1 rounded-full opacity-30" />
                 </div>
             </div>
-
-            {/* Subtle Bottom Accent */}
-            <div
-                className="absolute bottom-0 left-0 right-0 h-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                style={{ backgroundColor: color }}
-            />
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ backgroundColor: color }} />
         </div>
     );
 }
@@ -402,7 +431,7 @@ function ScoreCard({ label, score, color }: { label: string; score: number; colo
                 </svg>
                 <span className="absolute inset-0 flex items-center justify-center text-xl font-black text-slate-900 tracking-tighter">{Math.round(score)}</span>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</p>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">{label}</p>
         </div>
     );
 }

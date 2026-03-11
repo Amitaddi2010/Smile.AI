@@ -22,6 +22,13 @@ async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promis
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('smile_token');
+        localStorage.removeItem('smile_user');
+        window.location.href = '/login';
+      }
+    }
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(error.detail || `HTTP ${res.status}`);
   }
@@ -122,7 +129,7 @@ export const dashboardAPI = {
 
 // Journal
 export const journalAPI = {
-  analyze: (data: { text_content: string }, token: string) =>
+  analyze: (data: { text_content: string; title?: string; self_reported_mood?: string }, token: string) =>
     apiFetch<any>('/journal', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -144,4 +151,44 @@ export const aiAPI = {
 
   getInsights: (token: string) =>
     apiFetch<any>('/ai/insights', { token }),
+};
+
+// Counselor Management
+export const counselorAPI = {
+  getAll: (token: string) =>
+    apiFetch<any[]>('/counselors', { token }),
+
+  getMine: (token: string) =>
+    apiFetch<any>('/counselors/my-counselor', { token }),
+
+  rate: (data: { counselor_id: number; rating: number; feedback?: string }, token: string) =>
+    apiFetch<any>('/counselors/rate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      token
+    }),
+
+  logHelp: (data: { student_id: number; activity_type: string; notes?: string }, token: string) =>
+    apiFetch<any>('/counselors/help', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      token
+    }),
+};
+
+// Conversational AI
+export const conversationAPI = {
+  chat: (message: string, conversation_history: any[], token: string) =>
+    apiFetch<any>('/conversation/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversation_history }),
+      token,
+    }),
+
+  extract: (conversation_history: any[], token: string) =>
+    apiFetch<any>('/conversation/extract', {
+      method: 'POST',
+      body: JSON.stringify({ conversation_history }),
+      token,
+    }),
 };

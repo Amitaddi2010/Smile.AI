@@ -21,7 +21,7 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await login(email, password);
-            router.push('/dashboard');
+            router.push('/checkin');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {
@@ -31,17 +31,24 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex bg-white font-sans selection:bg-blue-600/10">
-            {/* Left panel - Dribbble Style Vibrant Mesh Art */}
+            {/* Left panel - Living Animated Gradient Mesh */}
             <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden bg-slate-900 flex-col justify-between p-12">
-                {/* Immersive animated mesh gradient background */}
+                {/* Animated mesh gradient background */}
                 <div className="absolute inset-0 z-0 opacity-80 mix-blend-screen pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[#3fd5ff] rounded-full mix-blend-screen filter blur-[100px] opacity-70 animate-pulse"></div>
-                    <div className="absolute top-[20%] right-[-20%] w-[60vw] h-[60vw] bg-[#ff2a5f] rounded-full mix-blend-screen filter blur-[120px] opacity-80"></div>
-                    <div className="absolute bottom-[-20%] left-[10%] w-[60vw] h-[60vw] bg-[#ffae00] rounded-full mix-blend-screen filter blur-[120px] opacity-60"></div>
+                    <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[#3fd5ff] rounded-full mix-blend-screen filter blur-[100px] opacity-70" style={{ animation: 'mesh1 12s ease-in-out infinite' }} />
+                    <div className="absolute top-[20%] right-[-20%] w-[60vw] h-[60vw] bg-[#ff2a5f] rounded-full mix-blend-screen filter blur-[120px] opacity-80" style={{ animation: 'mesh2 16s ease-in-out infinite' }} />
+                    <div className="absolute bottom-[-20%] left-[10%] w-[60vw] h-[60vw] bg-[#ffae00] rounded-full mix-blend-screen filter blur-[120px] opacity-60" style={{ animation: 'mesh3 14s ease-in-out infinite' }} />
+                    {/* Extra accent blob */}
+                    <div className="absolute top-[50%] left-[30%] w-[30vw] h-[30vw] bg-[#8b5cf6] rounded-full mix-blend-screen filter blur-[100px] opacity-40" style={{ animation: 'mesh2 20s ease-in-out infinite reverse' }} />
                 </div>
 
-                {/* Fine noise overlay to make it look premium/textured */}
-                <div className="absolute inset-0 z-10 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+                {/* Fine noise overlay */}
+                <div className="absolute inset-0 z-10 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+
+                {/* Floating accent orbs */}
+                <div className="absolute top-[15%] right-[15%] w-3 h-3 rounded-full bg-white/30 z-20" style={{ animation: 'float 6s ease-in-out infinite' }} />
+                <div className="absolute top-[60%] left-[20%] w-2 h-2 rounded-full bg-white/20 z-20" style={{ animation: 'float 8s ease-in-out infinite 1s' }} />
+                <div className="absolute top-[75%] right-[30%] w-4 h-4 rounded-full bg-white/10 z-20" style={{ animation: 'float 10s ease-in-out infinite 2s' }} />
 
                 <div className="relative z-20">
                     <div className="flex items-center gap-3">
@@ -54,8 +61,8 @@ export default function LoginPage() {
 
                 {/* Floating Glassmorphism Hero Card */}
                 <div className="relative z-20 w-full mb-10">
-                    <div className="rounded-[2rem] bg-white/10 border border-white/20 backdrop-blur-2xl p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)]">
-                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-6">
+                    <div className="rounded-[2rem] bg-white/10 border border-white/20 backdrop-blur-2xl p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] hover:bg-white/[0.12] transition-all duration-500 group">
+                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                             <Brain className="text-white" size={24} />
                         </div>
                         <h2 className="text-3xl font-bold text-white mb-4 leading-tight">
