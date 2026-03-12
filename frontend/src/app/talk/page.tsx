@@ -238,7 +238,7 @@ export default function TalkPage() {
         // Automatic Crisis Interception Protocol (ACIP)
         const isCrisis = ['suicide', 'kill myself', 'end it', 'harm myself', 'want to die', 'cut myself', 'end my life'].some(kw => lowerText.includes(kw));
         if (isCrisis) {
-            const newMessages = [...messages, userMsg, { role: 'assistant', content: "I am so sorry you are feeling this way, but your safety is the most important thing right now. I have overridden this chat to open emergency resources for you. Please reach out to them immediately—there are people who want to support you. You are not alone.", timestamp: new Date() }];
+            const newMessages: Message[] = [...messages, userMsg, { role: 'assistant', content: "I am so sorry you are feeling this way, but your safety is the most important thing right now. I have overridden this chat to open emergency resources for you. Please reach out to them immediately—there are people who want to support you. You are not alone.", timestamp: new Date() }];
             setMessages(newMessages);
             setInput('');
             setSosOpen(true);
@@ -256,7 +256,7 @@ export default function TalkPage() {
         }
         if (lowerText.includes('assess me') || lowerText.includes('depression test') || lowerText.includes('check my mood')) {
             setShowAssessment(true);
-            const newMessages = [...messages, userMsg, { role: 'assistant', content: "I've brought up a quick 2-question screener (PHQ-2) above our chat. Please answer those so I can get a better baseline of how you're doing.", timestamp: new Date() }];
+            const newMessages: Message[] = [...messages, userMsg, { role: 'assistant', content: "I've brought up a quick 2-question screener (PHQ-2) above our chat. Please answer those so I can get a better baseline of how you're doing.", timestamp: new Date() }];
             setMessages(newMessages);
             setInput('');
             setIsLoading(false);
@@ -264,7 +264,7 @@ export default function TalkPage() {
             return;
         }
 
-        const newMessages = [...messages, userMsg];
+        const newMessages: Message[] = [...messages, userMsg];
         setMessages(newMessages);
         setInput('');
         setShowMoodPicker(false);
@@ -314,7 +314,7 @@ export default function TalkPage() {
         else analysis = "Based on your answers, your mood seems relatively stable, but I'm still here to listen to whatever is on your mind.";
         
         setShowAssessment(false);
-        const newMessages = [...messages, { role: 'assistant', content: analysis, timestamp: new Date() }];
+        const newMessages: Message[] = [...messages, { role: 'assistant', content: analysis, timestamp: new Date() }];
         setMessages(newMessages);
         if (ttsEnabled) speak(analysis);
     };

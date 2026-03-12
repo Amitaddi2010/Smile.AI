@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import InteractiveDemo from '@/components/InteractiveDemo';
 import { Logo } from '@/components/Logo';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, Variants } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import { Brain, Shield, BarChart3, Users, Heart, ArrowRight, Activity, TrendingUp, Lock, Zap, Sparkles, X, Eye, Cpu, Layers } from 'lucide-react';
 
@@ -27,19 +27,19 @@ function useCountUp(end: number, duration = 2000, startOnView = true) {
 }
 
 /* ── Animation Variants ── */
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } }
 };
-const fadeIn = {
+const fadeIn: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.6 } }
 };
-const stagger = {
+const stagger: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
 };
-const scaleIn = {
+const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.9 },
   visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: "easeOut" } }
 };
