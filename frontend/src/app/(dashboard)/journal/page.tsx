@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { journalAPI } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,26 +32,33 @@ export default function JournalPage() {
     const [text, setText] = useState('');
     const [mood, setMood] = useState('Neutral');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
-    const [history, setHistory] = useState<any[]>([]);
+    interface JournalResult {
+        risk_level: string;
+        is_crisis: boolean;
+        smile_risk_index: number;
+        fusion_details: any;
+    }
+    const [result, setResult] = useState<JournalResult | null>(null);
+    const [history, setHistory] = useState<any[]>([]); // Need to define JournalEntry type if possible
     const [currentPrompt, setCurrentPrompt] = useState(WRITING_PROMPTS[0]);
 
     // Voice to Text
     const [isRecording, setIsRecording] = useState(false);
-    const recognitionRef = useRef<any>(null);
+    const recognitionRef = useRef<unknown>(null);
 
-    useEffect(() => {
-        if (token) loadHistory();
-    }, [token]);
-
-    const loadHistory = async () => {
+    const loadHistory = useCallback(async () => {
+        if (!token) return;
         try {
-            const data = await journalAPI.getHistory(token!);
+            const data = await journalAPI.getHistory(token);
             setHistory(data);
         } catch (error) {
             console.error('Failed to load history', error);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadHistory();
+    }, [loadHistory]);
 
     const toggleRecording = () => {
         if (isRecording) {

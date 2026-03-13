@@ -28,6 +28,11 @@ class User(Base):
 
     assessments = relationship("Assessment", back_populates="user")
     journals = relationship("JournalEntry", back_populates="user", cascade="all, delete-orphan")
+    
+    # Relationships for Counselor features
+    received_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.counselor_id", back_populates="counselor")
+    given_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.student_id", back_populates="student")
+    help_logs = relationship("CounselorHelp", foreign_keys="CounselorHelp.counselor_id", back_populates="counselor")
 
 
 class JournalEntry(Base):
@@ -37,6 +42,8 @@ class JournalEntry(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    title = Column(String(200), nullable=True)
+    self_reported_mood = Column(String(50), nullable=True)
     text_content = Column(Text, nullable=False)
     
     # Fusion Results
@@ -48,6 +55,34 @@ class JournalEntry(Base):
     fusion_details = Column(Text, nullable=True) 
 
     user = relationship("User", back_populates="journals")
+
+
+class CounselorRating(Base):
+    __tablename__ = "counselor_ratings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    counselor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False) # 1-5
+    feedback = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], back_populates="given_ratings")
+    counselor = relationship("User", foreign_keys=[counselor_id], back_populates="received_ratings")
+
+
+class CounselorHelp(Base):
+    """Tracks sessions or 'help' provided by a counselor to a student."""
+    __tablename__ = "counselor_help_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    counselor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    activity_type = Column(String(100), nullable=False) # e.g., "Counseling Session", "Message Response"
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    counselor = relationship("User", foreign_keys=[counselor_id], back_populates="help_logs")
 
 
 class Assessment(Base):

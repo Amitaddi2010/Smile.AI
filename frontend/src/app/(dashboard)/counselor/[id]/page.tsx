@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { dashboardAPI } from '@/lib/api';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, User, Activity, FileText, Brain, HeartPulse, ShieldAlert, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Activity, FileText, Brain, HeartPulse, ShieldAlert, Calendar, Star } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { counselorAPI } from '@/lib/api';
 
 export default function StudentDetailView() {
     const params = useParams();
@@ -12,6 +13,10 @@ export default function StudentDetailView() {
     const { token } = useAuth();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const [activityType, setActivityType] = useState('Counseling Session');
+    const [notes, setNotes] = useState('');
+    const [submittingHelp, setSubmittingHelp] = useState(false);
 
     useEffect(() => {
         if (!token || !params.id) return;
@@ -23,7 +28,7 @@ export default function StudentDetailView() {
                 router.push('/counselor');
             })
             .finally(() => setLoading(false));
-    }, [token, params.id]);
+    }, [token, params.id, router]);
 
     if (loading) {
         return (
@@ -35,10 +40,6 @@ export default function StudentDetailView() {
 
     const { student, assessments, journals, help_logs, ratings } = data;
     const latestAssessment = assessments[0];
-
-    const [activityType, setActivityType] = useState('Counseling Session');
-    const [notes, setNotes] = useState('');
-    const [submittingHelp, setSubmittingHelp] = useState(false);
 
     const handleLogHelp = async () => {
         if (!notes.trim()) return;
@@ -62,7 +63,7 @@ export default function StudentDetailView() {
         }
     };
 
-    const chartData = [...assessments].reverse().map((a: any) => ({
+    const chartData: { date: string; risk: number }[] = [...assessments].reverse().map((a: { created_at: string; risk_score: number }) => ({
         date: new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         risk: a.risk_score
     }));
@@ -177,7 +178,7 @@ export default function StudentDetailView() {
                             </div>
 
                             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                                {help_logs?.map((hl: any) => (
+                                {help_logs?.map((hl: { id: number; activity_type: string; notes: string; created_at: string }) => (
                                     <div key={hl.id} className="p-5 border border-slate-100 rounded-[1.5rem] bg-white group hover:border-blue-100 transition-colors">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-lg">{hl.activity_type}</span>
@@ -244,5 +245,3 @@ export default function StudentDetailView() {
     );
 }
 
-import { Star } from 'lucide-react';
-import { counselorAPI } from '@/lib/api';

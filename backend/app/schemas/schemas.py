@@ -134,16 +134,20 @@ class AssessmentResponse(BaseModel):
 
 # ── Journal Schemas ────────────────────────────────────────
 class JournalEntryInput(BaseModel):
+    title: Optional[str] = None
+    self_reported_mood: Optional[str] = None
     text_content: str = Field(..., min_length=10, description="The journal text to analyze")
 
 
 class JournalEntryResponse(BaseModel):
     id: int
     created_at: datetime
+    title: Optional[str] = None
+    self_reported_mood: Optional[str] = None
     text_content: str
     smile_risk_index: Optional[float]
     risk_level: Optional[str]
-    is_crisis: bool
+    is_crisis: Optional[bool] = False
     fusion_details: Optional[str]
 
     class Config:
@@ -169,11 +173,51 @@ class DashboardStats(BaseModel):
     recent_assessments: List[AssessmentResponse]
 
 
-class ModelInfo(BaseModel):
-    model_type: str
-    accuracy: float
-    auc_roc: float
-    feature_importances: Dict[str, float]
-    target_classes: List[str]
-    n_train_samples: int
-    n_test_samples: int
+# ── Counselor Schemas ──────────────────────────────────────
+class CounselorRatingInput(BaseModel):
+    counselor_id: int
+    rating: int = Field(..., ge=1, le=5)
+    feedback: Optional[str] = None
+
+
+class CounselorRatingResponse(BaseModel):
+    id: int
+    student_id: int
+    counselor_id: int
+    rating: int
+    feedback: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CounselorHelpInput(BaseModel):
+    student_id: int
+    activity_type: str = Field(..., min_length=2, max_length=100)
+    notes: Optional[str] = None
+
+
+class CounselorHelpResponse(BaseModel):
+    id: int
+    counselor_id: int
+    student_id: int
+    activity_type: str
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CounselorPublicInfo(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    avg_rating: Optional[float] = 0.0
+    rating_count: int = 0
+    is_available: bool = True
+
+    class Config:
+        from_attributes = True

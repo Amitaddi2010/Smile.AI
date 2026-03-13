@@ -199,7 +199,14 @@ export default function WellnessPage() {
     );
 }
 
-function WellnessCard({ label, score, color, icon: Icon }: any) {
+interface WellnessCardProps {
+    label: string;
+    score: number;
+    color: string;
+    icon: React.ElementType;
+}
+
+function WellnessCard({ label, score, color, icon: Icon }: WellnessCardProps) {
     return (
         <div className="card-premium p-6 bg-white flex items-center gap-6 group hover:border-[#1e40af]/20">
             <div className="relative w-20 h-20 shrink-0">

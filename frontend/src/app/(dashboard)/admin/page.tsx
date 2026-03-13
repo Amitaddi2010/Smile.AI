@@ -9,14 +9,15 @@ const COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
 
 export default function AdminPage() {
     const { token } = useAuth();
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<any>(null); // Keeping as any for complex API response
+    interface RiskDataPoint { name: string; value: number; }
     const [loading, setLoading] = useState(true);
 
     useEffect(() => { if (!token) return; dashboardAPI.getStats(token).then(setStats).catch(() => { }).finally(() => setLoading(false)); }, [token]);
 
     if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="w-10 h-10 border-3 border-[#1e40af]/30 border-t-[#1e40af] rounded-full animate-spin" /></div>;
 
-    const riskData = stats?.risk_distribution ? Object.entries(stats.risk_distribution).map(([name, value]) => ({ name, value })) : [];
+    const riskData: RiskDataPoint[] = stats?.risk_distribution ? Object.entries(stats.risk_distribution).map(([name, value]) => ({ name, value: value as number })) : [];
 
     return (
         <div className="space-y-8">
@@ -29,7 +30,7 @@ export default function AdminPage() {
                 <StatCard icon={Users} label="Total Users" value={stats?.total_users || 0} color="#1e40af" />
                 <StatCard icon={Activity} label="Total Assessments" value={stats?.total_assessments || 0} color="#8b5cf6" />
                 <StatCard icon={TrendingUp} label="Avg Risk Score" value={stats?.avg_risk_score?.toFixed(1) || 0} color="#f59e0b" />
-                <StatCard icon={AlertTriangle} label="High Risk" value={riskData.find((d: any) => d.name === 'high')?.value || 0} color="#ef4444" />
+                <StatCard icon={AlertTriangle} label="High Risk" value={riskData.find((d) => d.name === 'high')?.value || 0} color="#ef4444" />
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -37,11 +38,11 @@ export default function AdminPage() {
                     <h3 className="text-base font-semibold text-[#0f172a] mb-4">Risk Distribution</h3>
                     <ResponsiveContainer width="100%" height={280}>
                         <PieChart><Pie data={riskData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
-                            {riskData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i]} />)}
+                            {riskData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie><Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} /></PieChart>
                     </ResponsiveContainer>
                     <div className="flex justify-center gap-6 mt-2">
-                        {riskData.map((d: any, i: number) => (
+                        {riskData.map((d, i) => (
                             <div key={d.name} className="flex items-center gap-2 text-xs text-[#64748b] capitalize">
                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} /> {d.name}: {d.value as number}
                             </div>
@@ -56,7 +57,7 @@ export default function AdminPage() {
                             <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                             <YAxis stroke="#94a3b8" fontSize={12} />
                             <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
-                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>{riskData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i]} />)}</Bar>
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>{riskData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -66,7 +67,7 @@ export default function AdminPage() {
                 <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6">
                     <h3 className="text-base font-semibold text-[#0f172a] mb-4">Recent Assessments</h3>
                     <div className="space-y-2">
-                        {stats.recent_assessments.slice(0, 8).map((a: any) => (
+                        {stats.recent_assessments.slice(0, 8).map((a: any) => ( // simplified assessment type
                             <div key={a.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-[#f8fafc] border border-[#f1f5f9]">
                                 <div><p className="text-[#0f172a] text-sm">Assessment #{a.id}</p><p className="text-[#94a3b8] text-xs">{new Date(a.created_at).toLocaleString()}</p></div>
                                 <div className="flex items-center gap-3">
@@ -83,7 +84,14 @@ export default function AdminPage() {
     );
 }
 
-function StatCard({ icon: Icon, label, value, color }: any) {
+interface StatCardProps {
+    icon: React.ElementType;
+    label: string;
+    value: string | number;
+    color: string;
+}
+
+function StatCard({ icon: Icon, label, value, color }: StatCardProps) {
     return (
         <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5">
             <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}10` }}><Icon size={20} style={{ color }} /></div><p className="text-sm text-[#64748b]">{label}</p></div>

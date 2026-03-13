@@ -44,7 +44,11 @@ async def analyze_journal_entry(
 
     # 2. Run Fusion Service
     try:
-        fusion_result = fusion_service.analyze_journal(input_data.text_content, assessment_context)
+        enriched_text = input_data.text_content
+        if input_data.self_reported_mood:
+            enriched_text += f" I am feeling {input_data.self_reported_mood}"
+            
+        fusion_result = fusion_service.analyze_journal(enriched_text, assessment_context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fusion Engine Error: {str(e)}")
 
@@ -54,6 +58,8 @@ async def analyze_journal_entry(
     # 3. Save to DB
     journal_entry = JournalEntry(
         user_id=user.id,
+        title=input_data.title,
+        self_reported_mood=input_data.self_reported_mood,
         text_content=input_data.text_content,
         smile_risk_index=fusion_result.get("smile_risk_index"),
         risk_level=fusion_result.get("risk_level"),

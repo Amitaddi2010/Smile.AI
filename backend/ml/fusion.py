@@ -133,12 +133,38 @@ class SmileRiskFusion:
         }
         risk = sum(proba[i] * severity.get(c, 0.5) for i, c in enumerate(classes))
 
+        # --- Keyword boosting for explicit clinical somatic symptoms ---
+        # The ML model might miss short texts or specific medical shorthand, so we enforce clinical boundaries
+        text_lower = text.lower()
+        clinical_keywords = {
+            "critical": ["suicide", "kill myself", "want to die", "end it all", "hopeless", "give up", "die"],
+            "high": ["panic", "palpitation", "palpitations", "shortness of breath", "short breath", "breathness", "heaviness", "tightness", "chest pain", "hard to breathe", "fast heart", "worthless", "depressed", "anxiety attack", "panic attack", "headache", "migraine", "pain"],
+            "moderate": ["stressed", "overwhelmed", "anxious", "sad", "tired", "crying", "cant sleep", "empty", "lonely"]
+        }
+        
+        if any(kw in text_lower for kw in clinical_keywords["critical"]):
+            risk = max(risk, 0.95)
+            pred_class = "suicidal"
+        elif any(kw in text_lower for kw in clinical_keywords["high"]):
+            risk = max(risk, 0.75)
+            if pred_class == "normal": pred_class = "anxiety"
+        elif any(kw in text_lower for kw in clinical_keywords["moderate"]):
+            risk = max(risk, 0.50)
+            if pred_class == "normal": pred_class = "stress"
+        else:
+            # --- Positive Keyword Bypassing ---
+            # If the user is explicitly positive and triggers NO risk keywords, clamp the risk score
+            positive_keywords = ["good", "happy", "positive", "great", "excellent", "wonderful", "joyful", "amazing", "blessed", "peaceful", "calm", "excited", "proud", "love", "awesome"]
+            if any(kw in text_lower for kw in positive_keywords):
+                risk = min(risk, 0.15)
+                pred_class = "normal"
+
         return {
             "predicted_condition": pred_class,
             "confidence": float(np.max(proba)),
             "risk_score": float(np.clip(risk, 0, 1)),
             "probabilities": {c: float(p) for c, p in zip(classes, proba)},
-            "is_crisis": pred_class == "suicidal" and np.max(proba) > 0.4,
+            "is_crisis": pred_class == "suicidal" and risk > 0.4,
         }
 
     def predict_lifestyle(self, features: Dict) -> Dict:
@@ -273,11 +299,11 @@ class SmileRiskFusion:
         smile_index = round(float(np.clip(raw_score * 100, 0, 100)), 1)
 
         # Risk level
-        if smile_index >= 70:
+        if smile_index >= 80:
             level = "critical"
-        elif smile_index >= 50:
+        elif smile_index >= 60:
             level = "high"
-        elif smile_index >= 30:
+        elif smile_index >= 40:
             level = "moderate"
         else:
             level = "low"

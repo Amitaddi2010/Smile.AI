@@ -28,6 +28,16 @@ class FusionService:
         lifestyle_features = None
         behavioral_features = None
         
+        if not user_assessment:
+            user_assessment = {
+                "screen_time": 6.0,
+                "sleep_duration": 7.0,
+                "social_media_hours": 3.0,
+                "stress_level": 5.0,
+                "academic_pressure": 5.0,
+                "family_history": False
+            }
+            
         if user_assessment:
             # Map DB Assessment model properties to expected dict features
             lifestyle_features = {
@@ -35,13 +45,13 @@ class FusionService:
                 "Sleep_Duration_Hours": float(user_assessment.get("sleep_duration") or 7.0),
                 "Late_Night_Usage": 1 if float(user_assessment.get("sleep_duration") or 7.0) < 6 else 0,
                 "Social_Comparison_Trigger": 1 if float(user_assessment.get("social_media_hours") or 2.0) > 4 else 0,
-                "PHQ_9_Score": float(user_assessment.get("stress_level", 5) * 2),  # Proxy if real test missing
-                "GAD_7_Score": float(user_assessment.get("academic_pressure", 5) * 2)  # Proxy if real test missing
+                "PHQ_9_Score": float((user_assessment.get("stress_level") or 5) * 2),  # Proxy if real test missing
+                "GAD_7_Score": float((user_assessment.get("academic_pressure") or 5) * 2)  # Proxy if real test missing
             }
             
             behavioral_features = {
-                "Work_Stress_Level": float(user_assessment.get("academic_pressure", 5)),
-                "Sleep_Hours_Night": float(user_assessment.get("sleep_duration", 7.0)),
+                "Work_Stress_Level": float(user_assessment.get("academic_pressure") or 5.0),
+                "Sleep_Hours_Night": float(user_assessment.get("sleep_duration") or 7.0),
                 "Family_History_Mental_Illness": "Yes" if user_assessment.get("family_history") else "No",
                 "Trauma_History": "No" # Hard to proxy, defaulting to No
             }

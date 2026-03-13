@@ -45,18 +45,29 @@ class PredictionService:
         Run prediction on input features.
         Returns risk_score, risk_level, depression_probability, and top factors.
         """
-        # Prepare features
-        features = self._prepare_features(input_data)
+        from .fusion_service import fusion_service
         
-        # Scale features
-        features_scaled = self.scaler.transform(features)
+        # Map advanced assessment inputs to clinical model expectations
+        if input_data.get('academic_pressure') is None:
+            input_data['academic_pressure'] = (input_data.get('academic_workload', 5) + input_data.get('exam_anxiety', 5)) / 2.0
+        if input_data.get('screen_time') is None:
+            input_data['screen_time'] = input_data.get('social_media_hours', 3.0) + input_data.get('gaming_hours', 1.0)
+            
+        # Run standard behavioral & lifestyle models (bypassing the legacy XGBClassifier payload limitations)
+        result = fusion_service.analyze_journal(text=None, user_assessment=input_data)
         
-        # Predict
-        probability = float(self.model.predict_proba(features_scaled)[0][1])
-        risk_score = round(probability * 100, 1)
-        
-        # Determine risk level
-        risk_level = self._get_risk_level(risk_score)
+        if result and "error" not in result:
+            risk_score = result.get("smile_risk_index", 0.0)
+            probability = risk_score / 100.0
+            risk_level = result.get("risk_level", "low")
+            if risk_level == "critical": risk_level = "high" # Remap fusion level to standard DB schema
+        else:
+            # Fallback legacy formula
+            features = self._prepare_features(input_data)
+            features_scaled = self.scaler.transform(features)
+            probability = float(self.model.predict_proba(features_scaled)[0][1])
+            risk_score = round(probability * 100, 1)
+            risk_level = self._get_risk_level(risk_score)
         
         # Get top contributing factors
         top_factors = self._get_top_factors(input_data, probability)

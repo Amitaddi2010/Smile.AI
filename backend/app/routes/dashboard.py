@@ -6,8 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..database import get_db
-from ..models.user import User, Assessment, JournalEntry
-from ..schemas.schemas import StudentSummary, DashboardStats, AssessmentResponse, JournalEntryResponse, UserRoleUpdate, UserCounselorUpdate
+from ..models.user import User, Assessment, JournalEntry, CounselorHelp, CounselorRating
+from ..schemas.schemas import (
+    StudentSummary, DashboardStats, AssessmentResponse, 
+    JournalEntryResponse, UserRoleUpdate, UserCounselorUpdate,
+    CounselorHelpResponse, CounselorRatingResponse
+)
 from ..services.auth_service import get_current_user, require_role
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -244,14 +248,21 @@ async def get_student_details(
     assessments = db.query(Assessment).filter(Assessment.user_id == student_id).order_by(Assessment.created_at.desc()).all()
     journals = db.query(JournalEntry).filter(JournalEntry.user_id == student_id).order_by(JournalEntry.created_at.desc()).all()
     
+    # Fetch Counselor help logs and ratings
+    help_logs = db.query(CounselorHelp).filter(CounselorHelp.student_id == student_id).order_by(CounselorHelp.created_at.desc()).all()
+    ratings = db.query(CounselorRating).filter(CounselorRating.student_id == student_id).order_by(CounselorRating.created_at.desc()).all()
+    
     return {
         "student": {
             "id": student.id, 
             "name": student.name, 
-            "email": student.email
+            "email": student.email,
+            "counselor_id": student.counselor_id
         },
         "assessments": [AssessmentResponse.model_validate(a) for a in assessments],
-        "journals": [JournalEntryResponse.model_validate(j) for j in journals]
+        "journals": [JournalEntryResponse.model_validate(j) for j in journals],
+        "help_logs": [CounselorHelpResponse.model_validate(h) for h in help_logs],
+        "ratings": [CounselorRatingResponse.model_validate(r) for r in ratings]
     }
 
 

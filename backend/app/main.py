@@ -11,6 +11,8 @@ from .routes.predict import router as predict_router
 from .routes.dashboard import router as dashboard_router
 from .routes.journal import router as journal_router
 from .routes.ai import router as ai_router
+from .routes.counselor import router as counselor_router
+from .routes.conversation import router as conversation_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -26,7 +28,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(","),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +40,8 @@ app.include_router(predict_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(journal_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
+app.include_router(counselor_router, prefix="/api")
+app.include_router(conversation_router, prefix="/api")
 
 @app.get("/")
 async def root():

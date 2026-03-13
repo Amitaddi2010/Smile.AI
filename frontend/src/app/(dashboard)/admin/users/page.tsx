@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { dashboardAPI } from '@/lib/api';
 import { Users, Shield, User, Key, Search, AlertCircle, UserPlus, Info } from 'lucide-react';
@@ -13,12 +13,9 @@ export default function AdminUsersPage() {
  const [updatingParams, setUpdatingParams] = useState<number | null>(null);
  const [errorMsg, setErrorMsg] = useState('');
 
- useEffect(() => {
- if (!token) return;
- loadUsers();
- }, [token]);
 
- const loadUsers = async () => {
+
+ const loadUsers = useCallback(async () => {
  setLoading(true);
  try {
  const [usersData, counselorsData] = await Promise.all([
@@ -32,7 +29,11 @@ export default function AdminUsersPage() {
  } finally {
  setLoading(false);
  }
- };
+ }, [token]);
+
+ useEffect(() => {
+  if (token) loadUsers();
+ }, [token, loadUsers]);
 
  const handleRoleChange = async (userId: number, newRole: string) => {
  setUpdatingParams(userId);

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { aiAPI, predictAPI } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -96,7 +96,7 @@ export default function AIInsightsPage() {
  setReactions(prev => ({ ...prev, [msgIndex]: prev[msgIndex] === type ? undefined : type } as any));
  };
 
- const fetchInsights = async (force: boolean = false) => {
+ const fetchInsights = useCallback(async (force: boolean = false) => {
  if (!token) return;
  try {
  const history = await predictAPI.getHistory(token);
@@ -120,11 +120,11 @@ export default function AIInsightsPage() {
  } finally {
  setLoadingInsights(false);
  }
- };
+ }, [token]);
 
  useEffect(() => {
  if (token) fetchInsights();
- }, [token]);
+  }, [fetchInsights, token]);
 
  return (
  <div className="max-w-6xl mx-auto space-y-10 pb-12 animate-fade-in-up">

@@ -333,7 +333,16 @@ export default function AssessmentPage() {
  );
 }
 
-function InputField({ label, type, value, onChange, min, max }: any) {
+interface InputFieldProps {
+  label: string;
+  type: string;
+  value: any;
+  onChange: (val: string) => void;
+  min?: number;
+  max?: number;
+}
+
+function InputField({ label, type, value, onChange, min, max }: InputFieldProps) {
  return (
  <div>
  <label className="block text-sm font-bold text-slate-900 mb-2.5 uppercase tracking-wide">{label}</label>
@@ -343,7 +352,18 @@ function InputField({ label, type, value, onChange, min, max }: any) {
  );
 }
 
-function SliderField({ label, icon: Icon, value, onChange, min, max, step, unit }: any) {
+interface SliderFieldProps {
+  label: string;
+  icon: React.ElementType;
+  value: number;
+  onChange: (val: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+}
+
+function SliderField({ label, icon: Icon, value, onChange, min, max, step, unit }: SliderFieldProps) {
  return (
  <div className="group">
  <label className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
