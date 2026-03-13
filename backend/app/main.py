@@ -56,3 +56,7 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+@app.get("/api/test-route")
+async def test_route():
+    return {"message": "API is reachable"}
