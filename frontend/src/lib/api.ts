@@ -174,6 +174,12 @@ export const counselorAPI = {
       body: JSON.stringify(data),
       token
     }),
+
+  bookSession: (counselorId: number, token: string) =>
+    apiFetch<any>(`/counselors/${counselorId}/book`, {
+      method: 'POST',
+      token
+    }),
 };
 
 // Conversational AI

@@ -1,6 +1,6 @@
 'use client';
 import { useAuth } from '@/lib/auth-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { counselorAPI } from '@/lib/api';
 import { User, Star, Shield, MessageSquare, Heart, Search, Filter, Award, X } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,16 +10,18 @@ export default function CounselorsPage() {
     const [counselors, setCounselors] = useState<any[]>([]);
     const [myCounselor, setMyCounselor] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
 
     // Rating state
     const [showRateModal, setShowRateModal] = useState(false);
     const [rating, setRating] = useState(5);
     const [feedback, setFeedback] = useState('');
     const [submittingRating, setSubmittingRating] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [booking, setBooking] = useState<number | null>(null);
 
-    useEffect(() => {
+    const loadData = useCallback(() => {
         if (!token) return;
+        setLoading(true);
         Promise.all([
             counselorAPI.getAll(token),
             counselorAPI.getMine(token).catch(() => null)
@@ -30,6 +32,24 @@ export default function CounselorsPage() {
             .catch(console.error)
             .finally(() => setLoading(false));
     }, [token]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleBookSession = async (counselorId: number) => {
+        if (!token) return;
+        setBooking(counselorId);
+        try {
+            await counselorAPI.bookSession(counselorId, token);
+            alert("Session booked successfully! This counselor has been assigned to you.");
+            loadData();
+        } catch (error: any) {
+            alert(error.message || "Failed to book session");
+        } finally {
+            setBooking(null);
+        }
+    };
 
     const handleRate = async () => {
         if (!myCounselor) return;
@@ -120,7 +140,10 @@ export default function CounselorsPage() {
                             >
                                 Leave Review
                             </button>
-                            <button className="flex-1 md:flex-none px-8 py-4 bg-white/10 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95">
+                            <button 
+                                onClick={() => window.location.href = '/talk'}
+                                className="flex-1 md:flex-none px-8 py-4 bg-white/10 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
+                            >
                                 Open Chat
                             </button>
                         </div>
@@ -180,7 +203,14 @@ export default function CounselorsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredCounselors.map((c, idx) => (
-                        <CounselorCard key={c.id} counselor={c} index={idx} />
+                        <CounselorCard 
+                            key={c.id} 
+                            counselor={c} 
+                            index={idx} 
+                            onBook={() => handleBookSession(c.id)}
+                            onChat={() => window.location.href = '/talk'}
+                            isBooking={booking === c.id}
+                        />
                     ))}
                     {filteredCounselors.length === 0 && (
                         <div className="col-span-full py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
@@ -195,7 +225,15 @@ export default function CounselorsPage() {
     );
 }
 
-function CounselorCard({ counselor, index }: { counselor: any, index: number }) {
+interface CounselorCardProps {
+    counselor: any;
+    index: number;
+    onBook: () => void;
+    onChat: () => void;
+    isBooking: boolean;
+}
+
+function CounselorCard({ counselor, index, onBook, onChat, isBooking }: CounselorCardProps) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -205,7 +243,7 @@ function CounselorCard({ counselor, index }: { counselor: any, index: number }) 
         >
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 blur-3xl -mr-16 -mt-16 group-hover:bg-blue-100/50 transition-colors" />
 
-            <div className="relative z-10">
+            <div className="relative z-10 text-left">
                 <div className="flex items-start justify-between mb-8">
                     <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
                         <User size={36} />
@@ -242,10 +280,17 @@ function CounselorCard({ counselor, index }: { counselor: any, index: number }) 
                 </div>
 
                 <div className="mt-8 flex items-center gap-3">
-                    <button className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-[0.1em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10">
-                        Book Session
+                    <button 
+                        onClick={onBook}
+                        disabled={isBooking}
+                        className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-[0.1em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10 disabled:opacity-50"
+                    >
+                        {isBooking ? 'Booking...' : 'Book Session'}
                     </button>
-                    <button className="w-14 h-14 bg-white border border-slate-200 text-slate-900 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95">
+                    <button 
+                        onClick={onChat}
+                        className="w-14 h-14 bg-white border border-slate-200 text-slate-900 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95"
+                    >
                         <MessageSquare size={20} />
                     </button>
                 </div>

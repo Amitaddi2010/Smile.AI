@@ -134,3 +134,21 @@ async def get_my_assigned_counselor(
         "rating_count": int(avg_data.count or 0),
         "is_available": c.is_active
     }
+
+@router.post("/{counselor_id}/book")
+async def book_counselor(
+    counselor_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Students can book/assign a counselor to themselves."""
+    if user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can book counselors")
+    
+    c = db.query(User).filter(User.id == counselor_id, User.role == UserRole.COUNSELOR).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Counselor not found")
+    
+    user.counselor_id = counselor_id
+    db.commit()
+    return {"message": f"Successfully booked {c.name}", "counselor_id": counselor_id}
