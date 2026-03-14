@@ -21,6 +21,7 @@ const studentNav = [
     { href: '/assessment', label: 'Assessment', icon: Activity },
     { href: '/journal', label: 'Journal', icon: FileText },
     { href: '/wellness', label: 'Wellness', icon: Sparkles },
+    { href: '/wellness-pass', label: 'Wellness Pass', icon: FileText },
     { href: '/ai-insights', label: 'AI Insights', icon: Brain },
     { href: '/counselors', label: 'Support', icon: Heart },
     { href: '/settings', label: 'Settings', icon: Settings },

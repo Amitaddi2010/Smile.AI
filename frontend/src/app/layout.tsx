@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   title: "SMILE — Student Mental Health Intelligent Learning Evaluator",
   description: "AI-powered student mental health risk prediction and wellness monitoring platform",
   keywords: "mental health, student wellness, AI prediction, SMILE, depression risk",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

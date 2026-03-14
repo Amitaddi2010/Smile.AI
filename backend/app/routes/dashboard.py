@@ -13,6 +13,7 @@ from ..schemas.schemas import (
     CounselorHelpResponse, CounselorRatingResponse
 )
 from ..services.auth_service import get_current_user, require_role
+from ..services.mission_service import mission_service
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -285,3 +286,23 @@ async def export_user_data(
         "assessments": [AssessmentResponse.model_validate(a) for a in assessments],
         "journals": [JournalEntryResponse.model_validate(j) for j in journals]
     }
+
+@router.get("/missions")
+async def get_daily_missions(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Get personalized daily missions for the user."""
+    latest_assessment = db.query(Assessment).filter(Assessment.user_id == user.id).order_by(Assessment.created_at.desc()).first()
+    
+    # Convert assessment to dict for service
+    assessment_dict = None
+    if latest_assessment:
+        assessment_dict = {
+            "stress_level": latest_assessment.stress_level,
+            "sleep_duration": latest_assessment.sleep_duration,
+            "academic_pressure": latest_assessment.academic_pressure
+        }
+    
+    missions = mission_service.generate_missions(latest_assessment=assessment_dict)
+    return missions

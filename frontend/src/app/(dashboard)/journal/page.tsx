@@ -9,6 +9,7 @@ import {
     ShieldAlert, Sparkles, TrendingUp, Feather, Calendar, Loader2, RefreshCcw,
     Mic, MicOff, Smile, Meh, Frown, Angry, Heart, ChevronRight
 } from 'lucide-react';
+import SentimentVisualizer from '@/components/SentimentVisualizer';
 
 const WRITING_PROMPTS = [
     "What's one thing that brought you peace today?",
@@ -263,6 +264,14 @@ export default function JournalPage() {
                                 placeholder="Start transcribing or typing..."
                                 className="w-full h-48 bg-transparent focus:outline-none resize-none text-slate-700 text-base leading-relaxed placeholder:text-slate-300"
                             />
+                            
+                            {/* Proactive Sentiment Visualizer */}
+                            <div className="mt-4">
+                                <SentimentVisualizer 
+                                    isRecording={isRecording} 
+                                    sentiment={mood.toLowerCase() as any}
+                                />
+                            </div>
                         </div>
 
                         <div className="px-6 py-4 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100">

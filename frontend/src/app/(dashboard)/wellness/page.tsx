@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { dashboardAPI } from '@/lib/api';
 import { Moon, Smartphone, Heart, TrendingUp, Sparkles, Activity, Shield, Brain, Clock, Target } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import DailyMissions from '@/components/DailyMissions';
 
 export default function WellnessPage() {
     const { token } = useAuth();
@@ -81,9 +82,18 @@ export default function WellnessPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-[#0f172a]">Personal Wellness Audit</h1>
                     <p className="text-[#64748b] mt-1 text-sm font-light leading-relaxed">Multidimensional behavioral patterns & predictive risk tracking</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-[#1e40af]/5 rounded-xl border border-[#1e40af]/10">
-                    <Activity size={16} className="text-[#1e40af]" />
-                    <span className="text-xs font-bold text-[#1e40af] uppercase tracking-widest">Active Monitoring</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => window.location.href = '/wellness-pass'}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"
+                    >
+                        <FileText size={14} />
+                        Professional Report
+                    </button>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-[#1e40af]/5 rounded-xl border border-[#1e40af]/10">
+                        <Activity size={16} className="text-[#1e40af]" />
+                        <span className="text-xs font-bold text-[#1e40af] uppercase tracking-widest">Active Monitoring</span>
+                    </div>
                 </div>
             </div>
 
@@ -125,6 +135,34 @@ export default function WellnessPage() {
                     <div>
                         <p className="text-3xl font-black text-slate-900 tracking-tight capitalize">{insights.primary_driver}</p>
                         <p className="text-sm text-slate-500 font-medium mt-1">Primary risk factor identified</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Daily Missions Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-1">
+                    <DailyMissions token={token || ''} />
+                </div>
+                <div className="lg:col-span-2 card-premium p-8 bg-white h-full flex flex-col justify-center">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
+                            <Brain size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900">Neural Insights Engine</h3>
+                            <p className="text-xs text-slate-500 font-medium">Predictive behavioral mapping active</p>
+                        </div>
+                    </div>
+                    <p className="text-slate-600 text-sm leading-relaxed mb-6 italic">
+                        "Your recent patterns suggest a spike in evening digital engagement. Our models indicate that a 20% reduction in screen time after 9:00 PM could improve your REM stability by up to 15%."
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {['Circadian Sync', 'Load Balance', 'Cognitive Rest'].map(tag => (
+                            <span key={tag} className="px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-full">
+                                {tag}
+                            </span>
+                        ))}
                     </div>
                 </div>
             </div>

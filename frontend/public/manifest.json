@@ -1,0 +1,16 @@
+{
+  "name": "SMILE-AI Precision",
+  "short_name": "SMILE-AI",
+  "description": "Student Mental Health Intelligent Learning Evaluator",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
