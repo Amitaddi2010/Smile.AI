@@ -2,7 +2,7 @@
 import { useAuth } from '@/lib/auth-context';
 import { useEffect, useState } from 'react';
 import { dashboardAPI } from '@/lib/api';
-import { Moon, Smartphone, Heart, TrendingUp, Sparkles, Activity, Shield, Brain, Clock, Target } from 'lucide-react';
+import { Moon, Smartphone, Heart, TrendingUp, Sparkles, Activity, Shield, Brain, Clock, Target, FileText } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import DailyMissions from '@/components/DailyMissions';
 
