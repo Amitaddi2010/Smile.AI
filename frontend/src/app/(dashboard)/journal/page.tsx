@@ -44,7 +44,7 @@ export default function JournalPage() {
 
     // Voice to Text
     const [isRecording, setIsRecording] = useState(false);
-    const recognitionRef = useRef<unknown>(null);
+    const recognitionRef = useRef<any>(null);
 
     const loadHistory = useCallback(async () => {
         if (!token) return;
