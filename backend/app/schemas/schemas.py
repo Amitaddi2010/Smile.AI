@@ -221,3 +221,36 @@ class CounselorPublicInfo(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Safe Space Schemas ─────────────────────────────────────
+class SafeSpaceCommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=1000)
+
+class SafeSpaceCommentResponse(BaseModel):
+    id: int
+    post_id: int
+    pseudonym: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SafeSpacePostCreate(BaseModel):
+    content: str = Field(..., min_length=10, max_length=2000)
+    category: Optional[str] = "General"
+
+class SafeSpacePostResponse(BaseModel):
+    id: int
+    pseudonym: str
+    content: str
+    category: Optional[str]
+    is_flagged: bool
+    likes: int
+    created_at: datetime
+    comment_count: int = 0
+    comments: List[SafeSpaceCommentResponse] = []
+
+    class Config:
+        from_attributes = True

@@ -13,6 +13,7 @@ from .routes.journal import router as journal_router
 from .routes.ai import router as ai_router
 from .routes.counselor import router as counselor_router
 from .routes.conversation import router as conversation_router
+from .routes.safe_space import router as safe_space_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -42,6 +43,7 @@ app.include_router(journal_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
 app.include_router(counselor_router, prefix="/api")
 app.include_router(conversation_router, prefix="/api")
+app.include_router(safe_space_router, prefix="/api")
 
 @app.get("/")
 async def root():

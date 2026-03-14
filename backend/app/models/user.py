@@ -124,3 +124,37 @@ class Assessment(Base):
     top_factors = Column(Text)  # JSON string
 
     user = relationship("User", back_populates="assessments")
+
+
+class SafeSpacePost(Base):
+    __tablename__ = "safe_space_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pseudonym = Column(String(50), nullable=False) # e.g. "Anonymous Panda"
+    content = Column(Text, nullable=False)
+    category = Column(String(50), nullable=True) # e.g. "Exam Stress", "Social Anxiety"
+    
+    # AI Moderation
+    is_flagged = Column(Boolean, default=False)
+    moderation_reason = Column(String(200), nullable=True)
+    
+    likes = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    comments = relationship("SafeSpaceComment", back_populates="post", cascade="all, delete-orphan")
+
+
+class SafeSpaceComment(Base):
+    __tablename__ = "safe_space_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("safe_space_posts.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pseudonym = Column(String(50), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    post = relationship("SafeSpacePost", back_populates="comments")
+    user = relationship("User")

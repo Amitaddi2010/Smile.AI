@@ -83,6 +83,11 @@ export default function JournalPage() {
             };
             recognition.onerror = (event: any) => {
                 console.error("Speech recognition error", event.error);
+                if (event.error === 'network') {
+                    alert("Speech recognition failed due to a network error. Please check your internet connection and ensure your microphone is enabled.");
+                } else if (event.error === 'not-allowed') {
+                    alert("Microphone access was denied. Please enable microphone permissions in your browser settings.");
+                }
                 setIsRecording(false);
             };
             recognition.onend = () => setIsRecording(false);
