@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import DevNotice from "@/components/DevNotice";
+import SplashScreen from "@/components/SplashScreen";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className={`${jakarta.variable} ${jakarta.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
+            <SplashScreen />
             <DevNotice />
             {children}
           </ThemeProvider>
