@@ -50,6 +50,9 @@ export const authAPI = {
       body: JSON.stringify(data),
     }),
 
+  getMe: (token: string) =>
+    apiFetch<any>('/auth/me', { token }),
+
   getProfile: (token: string) =>
     apiFetch<any>('/auth/me', { token }),
 
@@ -125,6 +128,12 @@ export const dashboardAPI = {
 
   getMyWellness: (token: string) =>
     apiFetch<any>('/dashboard/my-wellness', { token }),
+
+  logZenSession: (duration_seconds: number, token: string) =>
+    apiFetch<any>(`/dashboard/log-zen-session?duration_seconds=${duration_seconds}`, { 
+      method: 'POST', 
+      token 
+    }),
 };
 
 // Journal

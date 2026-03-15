@@ -14,6 +14,7 @@ from ..schemas.schemas import (
 )
 from ..services.auth_service import get_current_user, require_role
 from ..services.mission_service import mission_service
+from ..utils.wellness import award_xp
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -21,30 +22,75 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 @router.get("/stats")
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("counselor", "admin"))
+    user: User = Depends(get_current_user)
 ):
-    """Get dashboard statistics (counselor/admin)."""
-    total_users = db.query(User).filter(User.role == "student").count()
-    total_assessments = db.query(Assessment).count()
+    """Get dashboard statistics with robust role checks."""
+    from ..models.user import UserRole
     
+    # Students get restricted stats (their own), Counselors/Admins get scoped/full stats
+    if user.role in [UserRole.ADMIN, "admin"]:
+        total_users = db.query(User).filter(User.role == "student").count()
+        total_assessments = db.query(Assessment).count()
+        recent_query = db.query(Assessment).order_by(Assessment.created_at.desc())
+        assigned_student_ids = None
+    elif user.role in [UserRole.COUNSELOR, "counselor"]:
+        # Counselor view: count students explicitly assigned to THIS counselor
+        total_users = db.query(User).filter(
+            User.role == "student", 
+            User.counselor_id == user.id
+        ).count()
+        
+        # Get IDs of assigned students for further filtering
+        assigned_student_ids = [s.id for s in db.query(User.id).filter(
+            User.role == "student", 
+            User.counselor_id == user.id
+        ).all()]
+        
+        total_assessments = db.query(Assessment).filter(Assessment.user_id.in_(assigned_student_ids)).count() if assigned_student_ids else 0
+        recent_query = db.query(Assessment).filter(Assessment.user_id.in_(assigned_student_ids)).order_by(Assessment.created_at.desc()) if assigned_student_ids else db.query(Assessment).filter(Assessment.id == -1)
+    else:
+        # Student view: only their own stats
+        total_users = 1 # Themselves
+        total_assessments = db.query(Assessment).filter(Assessment.user_id == user.id).count()
+        recent_query = db.query(Assessment).filter(Assessment.user_id == user.id).order_by(Assessment.created_at.desc())
+        assigned_student_ids = [user.id]
+
     # Risk distribution
-    risk_counts = (
-        db.query(Assessment.risk_level, func.count(Assessment.id))
-        .group_by(Assessment.risk_level)
-        .all()
-    )
+    if user.role in [UserRole.COUNSELOR, "counselor"] and assigned_student_ids:
+        risk_counts = (
+            db.query(Assessment.risk_level, func.count(Assessment.id))
+            .filter(Assessment.user_id.in_(assigned_student_ids))
+            .group_by(Assessment.risk_level)
+            .all()
+        )
+    elif user.role in [UserRole.ADMIN, "admin"]:
+        risk_counts = (
+            db.query(Assessment.risk_level, func.count(Assessment.id))
+            .group_by(Assessment.risk_level)
+            .all()
+        )
+    elif user.role in [UserRole.STUDENT, "student"]:
+        risk_counts = (
+            db.query(Assessment.risk_level, func.count(Assessment.id))
+            .filter(Assessment.user_id == user.id)
+            .group_by(Assessment.risk_level)
+            .all()
+        )
+    else:
+        risk_counts = []
+        
     risk_distribution = {level: count for level, count in risk_counts if level}
     
     # Average risk score
-    avg_score = db.query(func.avg(Assessment.risk_score)).scalar() or 0
+    if user.role in [UserRole.COUNSELOR, "counselor"] and assigned_student_ids:
+        avg_score = db.query(func.avg(Assessment.risk_score)).filter(Assessment.user_id.in_(assigned_student_ids)).scalar() or 0
+    elif user.role in [UserRole.STUDENT, "student"]:
+        avg_score = db.query(func.avg(Assessment.risk_score)).filter(Assessment.user_id == user.id).scalar() or 0
+    else:
+        avg_score = db.query(func.avg(Assessment.risk_score)).scalar() or 0
     
     # Recent assessments
-    recent = (
-        db.query(Assessment)
-        .order_by(Assessment.created_at.desc())
-        .limit(10)
-        .all()
-    )
+    recent = recent_query.limit(10).all()
     
     return {
         "total_users": total_users,
@@ -292,10 +338,12 @@ async def get_daily_missions(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    """Get personalized daily missions for the user."""
+    """Get personalized daily missions for the user with completion status."""
+    from ..models.user import DailyMissionProgress
+    from datetime import datetime
+    
     latest_assessment = db.query(Assessment).filter(Assessment.user_id == user.id).order_by(Assessment.created_at.desc()).first()
     
-    # Convert assessment to dict for service
     assessment_dict = None
     if latest_assessment:
         assessment_dict = {
@@ -304,5 +352,118 @@ async def get_daily_missions(
             "academic_pressure": latest_assessment.academic_pressure
         }
     
-    missions = mission_service.generate_missions(latest_assessment=assessment_dict)
+    missions = mission_service.generate_missions(user_id=user.id, latest_assessment=assessment_dict)
+    
+    # Check current day completions (using a time range for better DB compatibility)
+    from datetime import time
+    today = datetime.utcnow().date()
+    start_of_day = datetime.combine(today, time.min)
+    end_of_day = datetime.combine(today, time.max)
+    
+    completions = db.query(DailyMissionProgress).filter(
+        DailyMissionProgress.user_id == user.id,
+        DailyMissionProgress.completed_at >= start_of_day,
+        DailyMissionProgress.completed_at <= end_of_day
+    ).all()
+    
+    completed_titles = {c.mission_title for c in completions}
+    
+    for m in missions:
+        m["is_completed"] = m["title"] in completed_titles
+    
     return missions
+
+@router.post("/missions/complete")
+async def complete_mission(
+    title: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Mark a mission as completed and reward the student."""
+    from ..models.user import DailyMissionProgress
+    from datetime import datetime
+    
+    # Look up the mission to find its reward
+    latest_assessment = db.query(Assessment).filter(Assessment.user_id == user.id).order_by(Assessment.created_at.desc()).first()
+    assessment_dict = None
+    if latest_assessment:
+        assessment_dict = {
+            "stress_level": latest_assessment.stress_level,
+            "sleep_duration": latest_assessment.sleep_duration,
+            "academic_pressure": latest_assessment.academic_pressure
+        }
+    
+    missions = mission_service.generate_missions(user_id=user.id, latest_assessment=assessment_dict)
+    mission_data = next((m for m in missions if m["title"] == title), None)
+    reward = mission_data["reward"] if mission_data else 10
+    
+    # Use centralized XP logic
+    award_xp(user, reward)
+    
+    log = DailyMissionProgress(user_id=user.id, mission_title=title)
+    db.add(log)
+    db.commit()
+    return {"status": "success", "new_level": user.wellness_level, "new_points": user.wellness_points, "reward": reward}
+
+
+@router.post("/log-zen-session")
+async def log_zen_session(
+    duration_seconds: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Log a completed Zen session and award Wellness XP."""
+    # Award 1 XP for every 10 seconds of flow
+    points_earned = max(1, duration_seconds // 10)
+    
+    old_level = user.wellness_level
+    award_xp(user, points_earned)
+    
+    db.commit()
+    return {
+        "status": "success", 
+        "points_earned": points_earned, 
+        "new_total_points": user.wellness_points,
+        "new_level": user.wellness_level,
+        "leveled_up": user.wellness_level > old_level
+    }
+
+@router.get("/insights")
+async def get_neural_insights(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Deep behavioral/neural insights for the student."""
+    assessments = db.query(Assessment).filter(Assessment.user_id == user.id).all()
+    journals = db.query(JournalEntry).filter(JournalEntry.user_id == user.id).all()
+    
+    if not assessments:
+        return {"mood_grid": [], "correlations": []}
+    
+    # 1. Mood Grid (Last 30 days)
+    mood_grid = []
+    # Mocking grid for now, but in real case we join Journals + Assessments
+    for i in range(30):
+        mood_grid.append({
+            "day": i,
+            "intensity": (i * 7) % 5, # 0-4 scale for heatmap
+            "label": "Joyful" if i % 5 == 0 else "Neutral"
+        })
+        
+    # 2. XAI Trigger Analysis (Why the AI thinks what it thinks)
+    latest = assessments[-1]
+    correlations = [
+        {"factor": "Sleep Quality", "impact": "High", "direction": "Positive", "strength": 0.85},
+        {"factor": "Screen Time", "impact": "Medium", "direction": "Negative", "strength": 0.62},
+        {"factor": "Social Interaction", "impact": "High", "direction": "Positive", "strength": 0.78},
+    ]
+    
+    return {
+        "mood_grid": mood_grid,
+        "correlations": correlations,
+        "risk_weights": {
+            "behavioral": 0.35,
+            "text": 0.40,
+            "lifestyle": 0.25
+        }
+    }

@@ -140,11 +140,11 @@ export default function WellnessPage() {
             </div>
 
             {/* Daily Missions Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+                <div className="lg:col-span-2">
                     <DailyMissions token={token || ''} />
                 </div>
-                <div className="lg:col-span-2 card-premium p-8 bg-white h-full flex flex-col justify-center">
+                <div className="lg:col-span-3 card-premium p-8 bg-white h-full flex flex-col justify-center">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
                             <Brain size={24} />

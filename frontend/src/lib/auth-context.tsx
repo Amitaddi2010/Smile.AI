@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { authAPI } from '@/lib/api';
 
 interface User {
@@ -8,6 +8,8 @@ interface User {
     email: string;
     role: string;
     created_at: string;
+    wellness_level: number;
+    wellness_points: number;
 }
 
 interface AuthContextType {
@@ -17,6 +19,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     signup: (name: string, email: string, password: string, role: string) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setIsLoading(false);
     }, []);
+
+    const refreshUser = useCallback(async () => {
+        if (!token) return;
+        try {
+            const res = await authAPI.getMe(token);
+            setUser(res);
+            localStorage.setItem('smile_user', JSON.stringify(res));
+        } catch (e) {
+            console.error("Failed to refresh user", e);
+        }
+    }, [token]);
 
     const login = async (email: string, password: string) => {
         const res = await authAPI.login({ email, password });
@@ -60,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isLoading, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, token, isLoading, login, signup, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -27,9 +27,15 @@ class UserResponse(BaseModel):
     counselor_id: Optional[int] = None
     created_at: datetime
     is_active: bool = True
+    wellness_level: int = 1
+    wellness_points: int = 0
 
     class Config:
         from_attributes = True
+
+
+class MissionCompletion(BaseModel):
+    title: str
 
 
 class UserRoleUpdate(BaseModel):

@@ -9,6 +9,7 @@ from ..models.user import User, Assessment
 from ..schemas.schemas import AssessmentInput, PredictionResult, AssessmentResponse
 from ..services.auth_service import get_current_user
 from ..services.prediction_service import prediction_service
+from ..utils.wellness import award_xp
 
 router = APIRouter(prefix="/predict", tags=["Prediction"])
 
@@ -54,6 +55,10 @@ async def predict_risk(
         top_factors=json.dumps(result['top_factors']),
     )
     db.add(assessment)
+    
+    # Award Wellness XP for taking an assessment
+    award_xp(user, 15) # Assessments are high-value actions
+    
     db.commit()
     db.refresh(assessment)
     

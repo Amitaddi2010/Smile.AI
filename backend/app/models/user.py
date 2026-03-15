@@ -26,6 +26,10 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
 
+    # Wellness Gamification
+    wellness_level = Column(Integer, default=1)
+    wellness_points = Column(Integer, default=0)
+
     assessments = relationship("Assessment", back_populates="user")
     journals = relationship("JournalEntry", back_populates="user", cascade="all, delete-orphan")
     
@@ -33,6 +37,19 @@ class User(Base):
     received_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.counselor_id", back_populates="counselor")
     given_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.student_id", back_populates="student")
     help_logs = relationship("CounselorHelp", foreign_keys="CounselorHelp.counselor_id", back_populates="counselor")
+    mission_progress = relationship("DailyMissionProgress", back_populates="user")
+
+
+class DailyMissionProgress(Base):
+    __tablename__ = "daily_mission_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    mission_title = Column(String(200), nullable=False)
+    is_completed = Column(Boolean, default=True)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="mission_progress")
 
 
 class JournalEntry(Base):

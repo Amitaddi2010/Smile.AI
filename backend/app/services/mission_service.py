@@ -6,7 +6,12 @@ from typing import List, Dict
 import random
 
 class MissionService:
-    def generate_missions(self, latest_assessment: Dict = None, latest_journal: Dict = None) -> List[Dict]:
+    def generate_missions(self, user_id: int, latest_assessment: Dict = None, latest_journal: Dict = None) -> List[Dict]:
+        from datetime import datetime
+        # Seed by user_id and current date for deterministic daily missions
+        seed = int(f"{user_id}{datetime.utcnow().strftime('%Y%m%d')}")
+        rng = random.Random(seed)
+        
         missions = []
         
         # Default fallback missions
@@ -20,7 +25,8 @@ class MissionService:
         # Personalized Logic
         if latest_assessment:
             # Case 1: High Stress
-            if latest_assessment.get("stress_level", 0) >= 7:
+            stress = latest_assessment.get("stress_level")
+            if stress is not None and stress >= 7:
                 missions.append({
                     "id": "stress_1",
                     "title": "Unplug for 15m",
@@ -30,7 +36,8 @@ class MissionService:
                 })
             
             # Case 2: Poor Sleep
-            if latest_assessment.get("sleep_duration", 8) < 6:
+            sleep = latest_assessment.get("sleep_duration")
+            if sleep is not None and sleep < 6:
                missions.append({
                     "id": "sleep_1",
                     "title": "Early Wind-down",
@@ -40,7 +47,8 @@ class MissionService:
                 })
 
             # Case 3: High Academic Pressure
-            if latest_assessment.get("academic_pressure", 0) >= 7:
+            academic = latest_assessment.get("academic_pressure")
+            if academic is not None and academic >= 7:
                missions.append({
                     "id": "acad_1",
                     "title": "Priority List",
@@ -51,7 +59,7 @@ class MissionService:
 
         # Fill with randoms if needed
         while len(missions) < 3:
-            choice = random.choice(pool)
+            choice = rng.choice(pool)
             if choice not in missions:
                 missions.append(choice)
 

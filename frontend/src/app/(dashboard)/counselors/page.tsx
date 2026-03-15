@@ -141,7 +141,7 @@ export default function CounselorsPage() {
                                 Leave Review
                             </button>
                             <button 
-                                onClick={() => window.location.href = '/talk'}
+                                onClick={() => window.location.href = `/clinical-support?id=${myCounselor.id}`}
                                 className="flex-1 md:flex-none px-8 py-4 bg-white/10 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
                             >
                                 Open Chat
@@ -208,7 +208,7 @@ export default function CounselorsPage() {
                             counselor={c} 
                             index={idx} 
                             onBook={() => handleBookSession(c.id)}
-                            onChat={() => window.location.href = '/talk'}
+                            onChat={() => window.location.href = `/clinical-support?id=${c.id}`}
                             isBooking={booking === c.id}
                         />
                     ))}

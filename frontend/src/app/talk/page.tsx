@@ -275,7 +275,8 @@ export default function TalkPage() {
             const res = await conversationAPI.chat(userMsg.content, history, token!);
             setMessages(prev => [...prev, { role: 'assistant', content: res.response, timestamp: new Date() }]);
             if (ttsEnabled) speak(res.response);
-        } catch {
+        } catch (e) {
+            console.error('Chat error:', e);
             setMessages(prev => [...prev, { role: 'assistant', content: "I'm here with you. Please take your time and tell me more.", timestamp: new Date() }]);
         }
         setIsLoading(false);
