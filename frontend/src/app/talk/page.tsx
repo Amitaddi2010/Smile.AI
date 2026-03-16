@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { conversationAPI } from '@/lib/api';
+import { conversationAPI, aiAPI } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -70,6 +70,10 @@ export default function TalkPage() {
     const [elapsed, setElapsed] = useState('0:00');
     const [showMoodPicker, setShowMoodPicker] = useState(false);
     const [extractionStep, setExtractionStep] = useState(0);
+
+    // Voice Mode State
+    const [voiceModeActive, setVoiceModeActive] = useState(false);
+    const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
     
     // Accessibility
     const [textSize, setTextSize] = useState<'normal' | 'large'>('normal');
@@ -83,11 +87,13 @@ export default function TalkPage() {
     const [showAssessment, setShowAssessment] = useState(false);
     const [phqScores, setPhqScores] = useState({ q1: -1, q2: -1 });
     const [showExitModal, setShowExitModal] = useState(false);
+    const [ttsError, setTtsError] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null); // JS Speech API types are often missing in standard TS
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Auth guard
     useEffect(() => {
@@ -217,15 +223,46 @@ export default function TalkPage() {
         }, 500);
     };
 
-    const speak = (text: string) => {
-        if (!ttsEnabled || typeof window === 'undefined') return;
+    const speak = async (text: string) => {
+        if ((!ttsEnabled && !voiceModeActive) || typeof window === 'undefined') return;
+        
+        // Stop any current audio or speech
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
         window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.rate = 0.95; u.pitch = 1.0;
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google') || v.lang.startsWith('en'));
-        if (preferred) u.voice = preferred;
-        window.speechSynthesis.speak(u);
+
+        try {
+            const blob = await aiAPI.generateSpeech(text, token!);
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audioRef.current = audio;
+            setTtsError(null); // Clear previous errors if successful
+            
+            audio.onended = () => {
+                if (voiceModeActive) setVoiceState('idle');
+                URL.revokeObjectURL(url);
+                if (audioRef.current === audio) audioRef.current = null;
+            };
+            
+            await audio.play();
+        } catch (e: any) {
+            console.error('Groq TTS failed, falling back to browser:', e);
+            setTtsError(e.message || 'Groq TTS failed. Using browser voices.');
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 0.95; u.pitch = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            let preferred = voices.find(v => v.name.includes('Natural') || v.name.includes('Premium'));
+            if (!preferred) preferred = voices.find(v => v.name.includes('Google') || (v.name.includes('Microsoft') && v.name.includes('Online')));
+            if (!preferred) preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Siri'));
+            if (!preferred) preferred = voices.find(v => v.lang.startsWith('en'));
+            
+            if (preferred) u.voice = preferred;
+            u.onend = () => { if (voiceModeActive) setVoiceState('idle'); };
+            window.speechSynthesis.speak(u);
+        }
     };
 
     const sendMessage = async (overrideText?: string) => {
@@ -270,13 +307,16 @@ export default function TalkPage() {
         setShowMoodPicker(false);
         setIsLoading(true);
         setMsgCount(prev => prev + 1);
+        if (voiceModeActive) setVoiceState('thinking');
         try {
             const history = newMessages.map(m => ({ role: m.role, content: m.content }));
             const res = await conversationAPI.chat(userMsg.content, history, token!);
             setMessages(prev => [...prev, { role: 'assistant', content: res.response, timestamp: new Date() }]);
-            if (ttsEnabled) speak(res.response);
+            if (voiceModeActive) setVoiceState('speaking');
+            if (ttsEnabled || voiceModeActive) speak(res.response);
         } catch (e) {
             console.error('Chat error:', e);
+            if (voiceModeActive) setVoiceState('idle');
             setMessages(prev => [...prev, { role: 'assistant', content: "I'm here with you. Please take your time and tell me more.", timestamp: new Date() }]);
         }
         setIsLoading(false);
@@ -327,9 +367,10 @@ export default function TalkPage() {
         const r = new SR();
         r.continuous = false; r.interimResults = true;
         r.onresult = (e: any) => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; setInput(t); };
-        r.onerror = () => setIsRecording(false);
-        r.onend = () => setIsRecording(false);
+        r.onerror = () => { setIsRecording(false); if (voiceModeActive) setVoiceState('idle'); };
+        r.onend = () => { setIsRecording(false); };
         r.start(); recognitionRef.current = r; setIsRecording(true);
+        if (voiceModeActive) setVoiceState('listening');
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -348,6 +389,173 @@ export default function TalkPage() {
             </div>
         </div>
     );
+
+    // ══════════════════════════════════════════════════════════
+    // IMMERSIVE VOICE MODE
+    // ══════════════════════════════════════════════════════════
+    if (voiceModeActive) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center overflow-hidden font-sans">
+                {/* Ambient Deep Glows */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <motion.div 
+                        animate={{ 
+                            scale: voiceState === 'listening' ? [1, 1.2, 1] : voiceState === 'speaking' ? [1, 1.5, 1] : 1,
+                            opacity: voiceState === 'listening' ? 0.3 : voiceState === 'speaking' ? 0.4 : 0.1
+                        }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vmin] h-[80vmin] bg-blue-500/30 rounded-full blur-[100px]"
+                    />
+                     <motion.div 
+                        animate={{ 
+                            scale: voiceState === 'thinking' ? [1, 1.1, 1] : 1,
+                            opacity: voiceState === 'thinking' ? 0.3 : 0.1
+                        }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vmin] h-[60vmin] bg-indigo-500/30 rounded-full blur-[80px]"
+                    />
+                </div>
+
+                {/* Top Bar */}
+                <div className="absolute top-8 w-full px-8 flex justify-between items-center z-10 max-w-7xl">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
+                            <Sparkles size={20} className="text-white" />
+                        </div>
+                        <span className="text-white font-bold tracking-tight">SMILE Voice</span>
+                    </div>
+
+                    {/* Error Indicator for Voice Mode */}
+                    <AnimatePresence>
+                        {ttsError && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="bg-rose-500/20 border border-rose-500/30 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-3 text-white max-w-sm"
+                            >
+                                <AlertTriangle size={14} className="text-rose-400" />
+                                <span className="text-[10px] font-bold truncate">{ttsError}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <button onClick={() => { 
+                        setVoiceModeActive(false); 
+                        if(isRecording) toggleRecording(); 
+                        window.speechSynthesis.cancel(); 
+                        if(audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+                        setVoiceState('idle'); 
+                    }} className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center backdrop-blur-md text-white">
+                        <ChevronLeft size={20} />
+                    </button>
+                </div>
+
+                {/* Central Orb */}
+                <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pb-20">
+                    <motion.div 
+                        animate={{
+                            scale: voiceState === 'listening' ? [1, 1.15, 1] : voiceState === 'speaking' ? [1, 1.3, 1] : voiceState === 'thinking' ? [1, 0.95, 1] : 1,
+                            boxShadow: voiceState === 'listening' ? '0 0 60px rgba(59,130,246,0.6)' : voiceState === 'speaking' ? '0 0 100px rgba(99,102,241,0.8)' : voiceState === 'thinking' ? '0 0 40px rgba(168,85,247,0.4)' : '0 0 40px rgba(255,255,255,0.05)',
+                            borderRadius: voiceState === 'speaking' || voiceState === 'listening' 
+                                ? ["60% 40% 30% 70%/60% 30% 70% 40%", "30% 60% 70% 40%/50% 60% 30% 60%", "60% 40% 30% 70%/60% 30% 70% 40%"]
+                                : "50%",
+                            rotate: voiceState === 'speaking' || voiceState === 'listening' ? [0, 360] : 0,
+                        }}
+                        transition={{ 
+                            scale: { repeat: Infinity, duration: voiceState === 'listening' ? 1.5 : voiceState === 'speaking' ? 0.8 : 2, ease: "easeInOut" },
+                            boxShadow: { repeat: Infinity, duration: 2, ease: "easeInOut" },
+                            borderRadius: { repeat: Infinity, duration: 4, ease: "easeInOut" },
+                            rotate: { repeat: Infinity, duration: 8, ease: "linear" }
+                        }}
+                        className="w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 flex items-center justify-center mb-16 relative overflow-hidden"
+                    >
+                        {/* Audio Wave Visualizer Center (counter-rotate to stay upright if orb is spinning) */}
+                        <motion.div 
+                            animate={{ rotate: voiceState === 'speaking' || voiceState === 'listening' ? [0, -360] : 0 }}
+                            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+                            className="flex gap-2 items-center h-16 absolute z-10"
+                        >
+                            {[...Array(5)].map((_, i) => (
+                                <motion.div 
+                                    key={i} 
+                                    animate={{ 
+                                        height: voiceState === 'idle' ? 4 : voiceState === 'listening' ? [10, 40, 10] : voiceState === 'speaking' ? [10, 60, 10] : [10, 20, 10],
+                                        opacity: voiceState === 'idle' ? 0.3 : 1
+                                    }}
+                                    transition={{ 
+                                        repeat: Infinity, 
+                                        duration: voiceState === 'listening' ? 0.8 : voiceState === 'speaking' ? 0.3 : voiceState === 'thinking' ? 1.2 : 2, 
+                                        delay: i * 0.1, 
+                                        ease: 'easeInOut' 
+                                    }}
+                                    className={`w-2 rounded-full ${voiceState === 'speaking' ? 'bg-indigo-400' : voiceState === 'thinking' ? 'bg-purple-400' : 'bg-blue-400'}`} 
+                                />
+                            ))}
+                        </motion.div>
+                        
+                        {/* Inner fluid core */}
+                        {voiceState !== 'idle' && (
+                            <motion.div 
+                                animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.5, 0.8, 0.5] }}
+                                transition={{ repeat: Infinity, duration: voiceState === 'speaking' ? 1 : 2 }}
+                                className={`absolute w-full h-full rounded-full blur-[30px] ${voiceState === 'speaking' ? 'bg-indigo-600/30' : voiceState === 'thinking' ? 'bg-purple-600/20' : 'bg-blue-600/30'}`}
+                            />
+                        )}
+                    </motion.div>
+
+                    <h2 className="text-3xl font-black text-white mb-6 tracking-tight transition-all text-center px-4">
+                        {voiceState === 'idle' ? "Tap the mic to talk" : 
+                         voiceState === 'listening' ? "I'm listening..." : 
+                         voiceState === 'thinking' ? "Thinking..." : "Speaking..."}
+                    </h2>
+                    
+                    {/* Transcript preview */}
+                    <div className="h-20 max-w-2xl w-full text-center px-6 mx-auto flex items-center justify-center">
+                        <AnimatePresence mode="popLayout">
+                            <motion.p 
+                                key={voiceState === 'listening' ? input : msgCount}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="text-slate-300 font-medium text-lg leading-relaxed line-clamp-2"
+                            >
+                                {voiceState === 'listening' ? (input || "...") : 
+                                 voiceState === 'speaking' && messages.length > 0 && messages[messages.length-1].role === 'assistant' ? messages[messages.length-1].content :
+                                 voiceState === 'idle' ? "Take a deep breath and share what's on your mind." : ""}
+                            </motion.p>
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="absolute bottom-20 flex items-center gap-6">
+                        <button 
+                            onClick={() => {
+                                if (voiceState === 'idle') {
+                                    setInput('');
+                                    toggleRecording();
+                                } else if (voiceState === 'listening') {
+                                    toggleRecording(); // Stop recording
+                                    if (input.trim()) sendMessage(input);
+                                    else setVoiceState('idle');
+                                } else if (voiceState === 'speaking' || voiceState === 'thinking') {
+                                    window.speechSynthesis.cancel();
+                                    setVoiceState('idle');
+                                }
+                            }}
+                            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+                                voiceState === 'listening' ? 'bg-blue-600 hover:bg-blue-500 shadow-xl shadow-blue-500/40 text-white transform scale-110' : 
+                                voiceState === 'speaking' || voiceState === 'thinking' ? 'bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white' :
+                                'bg-white text-slate-900 hover:scale-105 shadow-xl shadow-white/10'
+                            }`}
+                        >
+                            {voiceState === 'listening' ? <Send size={30} className="ml-1" /> : voiceState === 'speaking' || voiceState === 'thinking' ? <MessageSquare size={30} className="opacity-50" /> : <Mic size={32} />}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // ══════════════════════════════════════════════════════════
     // SESSION ENDED — LIGHT THEME & TRANSPARENT RESULTS
@@ -718,6 +926,36 @@ export default function TalkPage() {
                         )}
                     </div>
                 </header>
+                
+                {/* TTS Error Alert Banner */}
+                <AnimatePresence>
+                    {ttsError && (
+                        <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-rose-50 border-b border-rose-100 flex-shrink-0 z-10"
+                        >
+                            <div className="max-w-4xl mx-auto px-8 py-3 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                                        <AlertTriangle size={16} />
+                                    </div>
+                                    <p className="text-xs font-bold text-rose-800">
+                                        <span className="font-black uppercase tracking-tight mr-2">Audio Engine Alert:</span>
+                                        {ttsError}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => setTtsError(null)}
+                                    className="p-1 px-3 rounded-lg text-rose-500 hover:bg-rose-100 transition-colors text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar">
@@ -1016,19 +1254,25 @@ export default function TalkPage() {
                         {/* Action Toolbar on left */}
                         <div className="flex flex-col gap-2 shrink-0 pb-1">
                             <button onClick={toggleRecording}
-                                className={`w-11 h-11 rounded-[1rem] flex items-center justify-center transition-all shadow-sm ${isRecording
+                                className={`w-11 h-11 rounded-[1.2rem] flex items-center justify-center transition-all shadow-sm ${isRecording
                                     ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse'
                                     : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300'
                                 }`} title="Voice Input">
                                 {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                             </button>
-                            <button onClick={() => setShowMoodPicker(!showMoodPicker)}
-                                className={`w-11 h-11 rounded-[1rem] flex items-center justify-center transition-all shadow-sm ${showMoodPicker
-                                    ? 'bg-blue-50 border border-blue-200 text-blue-600 shadow-inner'
-                                    : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300'
-                                }`} title="Quick Emote">
-                                <Smile size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setShowMoodPicker(!showMoodPicker)}
+                                    className={`w-11 h-11 rounded-[1.2rem] flex items-center justify-center transition-all shadow-sm ${showMoodPicker
+                                        ? 'bg-blue-50 border border-blue-200 text-blue-600 shadow-inner'
+                                        : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300'
+                                    }`} title="Quick Emote">
+                                    <Smile size={20} />
+                                </button>
+                                <button onClick={() => setVoiceModeActive(true)}
+                                    className="w-11 h-11 rounded-[1.2rem] flex items-center justify-center transition-all shadow-md bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:scale-105 hover:shadow-indigo-500/30 group" title="Immersive Voice Mode">
+                                    <PhoneCall size={20} className="group-hover:animate-pulse" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Enhanced Text Input with Elasticity & Micro-Interactions */}

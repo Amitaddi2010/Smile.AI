@@ -3,6 +3,8 @@ SMILE-AI AI Service
 Integrates with Groq LLM for intelligent insights and support.
 """
 from groq import Groq
+from datetime import datetime
+import traceback
 from ..config import settings
 import logging
 
@@ -58,6 +60,29 @@ class AIService:
             "Note: You are an AI, mention this. Recommend university services for crisis."
         )
         return self.get_completion(assessment_summary, system_prompt)
+
+    def generate_speech(self, text: str):
+        """Generate speech using Groq Orpheus model."""
+        try:
+            # We use the canopy labs orpheus model for English
+            response = self.client.audio.speech.create(
+                model="canopylabs/orpheus-v1-english",
+                voice="autumn", # Using 'autumn' as discovered in research
+                input=text,
+            )
+            # The response.content contains the binary audio data (WAV)
+            return response.content
+        except Exception as e:
+            tb = traceback.format_exc()
+            err_msg = f"Groq TTS Error ({type(e).__name__}): {str(e)}"
+            if hasattr(e, 'body'):
+                err_msg += f" | Body: {e.body}"
+            
+            with open("debug_tts.log", "a") as f:
+                f.write(f"{datetime.now()}: {err_msg}\nTraceback:\n{tb}\n")
+            
+            log.error(err_msg)
+            return None
 
 # Singleton instance
 ai_service = AIService()

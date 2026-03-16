@@ -160,6 +160,24 @@ export const aiAPI = {
 
   getInsights: (token: string) =>
     apiFetch<any>('/ai/insights', { token }),
+
+  generateSpeech: async (text: string, token: string) => {
+    const res = await fetch(`${API_BASE}/ai/tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ text })
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Speech generation failed' }));
+      throw new Error(errorData.detail || 'Speech generation failed');
+    }
+    
+    return res.blob();
+  }
 };
 
 // Counselor Management

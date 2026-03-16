@@ -10,6 +10,7 @@ from ..services.auth_service import get_current_user
 from ..services.ai_service import ai_service
 from pydantic import BaseModel
 from typing import List, Optional
+from fastapi.responses import Response
 
 router = APIRouter(prefix="/ai", tags=["AI Insights"])
 
@@ -23,7 +24,7 @@ async def chat_with_smile(
     input_data: QuestionInput,
     user: User = Depends(get_current_user)
 ):
-    """Chat with SMILE-AI supported by LLaMA 3.1."""
+    """Chat with SMILE-AI supported by LLaMA 3.3."""
     prompt = input_data.question
     system_prompt = (
         f"You are SMILE-AI, a student mental health support assistant. "
@@ -34,6 +35,30 @@ async def chat_with_smile(
     )
     response = ai_service.get_completion(prompt, system_prompt)
     return {"response": response}
+
+
+class TTSInput(BaseModel):
+    text: str
+
+
+@router.post("/tts")
+async def generate_speech(
+    input_data: TTSInput,
+    user: User = Depends(get_current_user)
+):
+    """Generate high-fidelity speech using Groq Orpheus."""
+    try:
+        audio_content = ai_service.generate_speech(input_data.text)
+        if not audio_content:
+             raise HTTPException(status_code=500, detail="Failed to generate speech")
+             
+        return Response(content=audio_content, media_type="audio/wav")
+    except Exception as e:
+        # Check if it's a known error from our debug log logic
+        error_detail = str(e)
+        if "generate speech" in error_detail.lower():
+             error_detail = "Groq TTS engine is currently unavailable (Terms may be required or API limit reached)."
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 @router.get("/insights")

@@ -5,6 +5,8 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import DevNotice from "@/components/DevNotice";
 import SplashScreen from "@/components/SplashScreen";
+import PageTransition from "@/components/PageTransition";
+import BreatheWidget from "@/components/BreatheWidget";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -30,7 +32,10 @@ export default function RootLayout({
           <ThemeProvider>
             <SplashScreen />
             <DevNotice />
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
+            <BreatheWidget />
           </ThemeProvider>
         </AuthProvider>
       </body>

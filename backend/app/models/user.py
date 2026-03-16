@@ -34,9 +34,10 @@ class User(Base):
     journals = relationship("JournalEntry", back_populates="user", cascade="all, delete-orphan")
     
     # Relationships for Counselor features
-    received_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.counselor_id", back_populates="counselor")
-    given_ratings = relationship("CounselorRating", foreign_keys="CounselorRating.student_id", back_populates="student")
-    help_logs = relationship("CounselorHelp", foreign_keys="CounselorHelp.counselor_id", back_populates="counselor")
+    received_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.counselor_id]", back_populates="counselor")
+    given_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.student_id]", back_populates="student")
+    help_logs_as_counselor = relationship("CounselorHelp", foreign_keys="[CounselorHelp.counselor_id]", back_populates="counselor")
+    help_logs_as_student = relationship("CounselorHelp", foreign_keys="[CounselorHelp.student_id]", back_populates="student")
     mission_progress = relationship("DailyMissionProgress", back_populates="user")
 
 
@@ -99,7 +100,8 @@ class CounselorHelp(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    counselor = relationship("User", foreign_keys=[counselor_id], back_populates="help_logs")
+    counselor = relationship("User", foreign_keys=[counselor_id], back_populates="help_logs_as_counselor")
+    student = relationship("User", foreign_keys=[student_id], back_populates="help_logs_as_student")
 
 
 class Assessment(Base):
